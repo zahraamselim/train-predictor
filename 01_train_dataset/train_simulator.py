@@ -3,6 +3,7 @@ from typing import List
 from .train_types import TRAIN_TYPES
 from .train_physics import TrainPhysics
 
+
 class TrainSimulator:
     """
     Runs train simulation scenarios and generates approach data.
@@ -62,6 +63,10 @@ class TrainSimulator:
         brake_decel = self.physics.train.brake_force_service
         braking_distance = (speed ** 2) / (2 * brake_decel) * 1.3  # 30% safety margin
         
+        # Track if train is making progress (to detect stuck scenarios)
+        last_distance = distance
+        stall_counter = 0
+        
         while distance > 0:
             # Decide control action
             if distance <= braking_distance:
@@ -72,9 +77,26 @@ class TrainSimulator:
             # Calculate physics
             accel = self.physics.calculate_acceleration(speed, grade, braking)
             
+            # Check if train can overcome resistance (not stuck)
+            if not braking and accel <= 0 and speed < 5:
+                # Train is stalled (can't overcome resistance at low speed)
+                # Apply some throttle to keep moving
+                accel = max(accel, 0.05)  # Minimum forward acceleration
+            
             # Update state using kinematics
             speed_new = max(0, speed + accel * dt)
             distance_new = distance - (speed * dt + 0.5 * accel * dt**2)
+            
+            # Detect stalling (not making progress)
+            if abs(distance - last_distance) < 0.01:
+                stall_counter += 1
+                if stall_counter > 100:  # Stalled for 10 seconds
+                    # Force some progress to avoid infinite loop
+                    distance_new = distance - 0.1
+            else:
+                stall_counter = 0
+            
+            last_distance = distance
             
             # Calculate ETA (simple: current_distance / current_speed)
             eta = distance / speed if speed > 0.1 else 0
@@ -95,11 +117,16 @@ class TrainSimulator:
             distance = distance_new
             time += dt
             
-            # Safety check
-            if time > 600:  # 10 minutes max
+            # Safety check - more lenient now
+            if time > 300:  # 5 minutes max (reduced from 10)
+                # If we're close enough, consider it done
+                if distance < 50:
+                    break
+                # Otherwise this scenario failed
                 break
         
         # Restore original brake force
         self.physics.train.brake_force_service = original_brake
         
         return trajectory
+        

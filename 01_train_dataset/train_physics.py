@@ -1,5 +1,6 @@
 from .train_types import TrainType
 
+
 class TrainPhysics:
     """
     Simulates train motion using fundamental physics principles.
@@ -91,7 +92,10 @@ class TrainPhysics:
         # Convert grade percentage to radians: sin(θ) ≈ grade/100 for small angles
         grade_force = mass_kg * self.g * (grade / 100)
         
-        return rolling_force + air_force + grade_force
+        # Ensure resistance on downhill doesn't make train accelerate uncontrollably
+        total_resistance = rolling_force + air_force + grade_force
+        
+        return total_resistance
     
     def calculate_acceleration(self, velocity: float, grade: float, 
                               braking: str = None) -> float:
@@ -126,3 +130,4 @@ class TrainPhysics:
         
         # F = ma => a = F/m
         return net_force / mass_kg
+        

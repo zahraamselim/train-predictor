@@ -156,7 +156,7 @@ def visualize_dataset(csv_file: str = 'train_data.csv'):
     
     plt.tight_layout()
     
-    output_file = csv_file.replace('.csv', '_visualization.png')
+    output_file = csv_file.replace('.csv', '_visualization.png').replace('/data', '/plots')
     plt.savefig(output_file, dpi=150, bbox_inches='tight')
     print(f"\nVisualization saved to: {output_file}")
     plt.show()
@@ -172,9 +172,7 @@ def print_sample_scenarios(csv_file: str = 'train_data.csv', n: int = 3):
     """
     df = pd.read_csv(csv_file)
     
-    print(f"\n{'='*80}")
-    print(f"SAMPLE SCENARIOS (showing {n} examples)")
-    print(f"{'='*80}\n")
+    print(f"SAMPLE SCENARIOS (showing {n} examples)\n")
     
     for i, scenario_id in enumerate(df['scenario_id'].unique()[:n]):
         scenario = df[df['scenario_id'] == scenario_id]

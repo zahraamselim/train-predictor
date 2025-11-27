@@ -13,7 +13,7 @@ def generate_dataset(num_scenarios: int = 100,
     Variations include:
     - Train types (passenger, freight, express)
     - Initial speeds (40-120 km/h range, type-dependent)
-    - Grades (-3% to +3%, realistic for mainline railways)
+    - Grades (-2% to +2%, realistic for mainline railways)
     - Weather conditions (clear, rain, fog)
     
     Args:
@@ -24,25 +24,34 @@ def generate_dataset(num_scenarios: int = 100,
     import pandas as pd
     
     all_data = []
+    failed_scenarios = 0
     
     for i in range(num_scenarios):
         # Random scenario parameters
         train_type = np.random.choice(['passenger', 'freight', 'express'])
         
-        # Speed range depends on train type
+        # Speed range depends on train type (higher minimum for freight on grades)
         if train_type == 'freight':
-            speed = np.random.uniform(40, 80)
+            speed = np.random.uniform(50, 80)  # Increased minimum from 40
         elif train_type == 'express':
-            speed = np.random.uniform(80, 140)
+            speed = np.random.uniform(90, 140)  # Increased minimum from 80
         else:
-            speed = np.random.uniform(50, 120)
+            speed = np.random.uniform(60, 120)  # Increased minimum from 50
         
-        grade = np.random.uniform(-3, 3)
+        # Reduced grade range to avoid physics edge cases
+        grade = np.random.uniform(-2, 2)  # Was -3 to 3
         weather = np.random.choice(['clear', 'rain', 'fog'], p=[0.7, 0.2, 0.1])
         
         # Run simulation
         sim = TrainSimulator(train_type, crossing_distance)
         trajectory = sim.simulate_approach(speed, grade, weather)
+        
+        # Validate scenario completed successfully
+        if len(trajectory) == 0 or trajectory[-1]['distance_to_crossing'] > 10:
+            # Scenario failed to complete
+            failed_scenarios += 1
+            print(f"Warning: Scenario {i} failed to complete (train didn't reach crossing)")
+            continue
         
         # Add scenario ID
         for point in trajectory:
@@ -54,11 +63,17 @@ def generate_dataset(num_scenarios: int = 100,
             print(f"Generated {i + 1}/{num_scenarios} scenarios")
     
     # Save to CSV
+    if len(all_data) == 0:
+        print("ERROR: No valid scenarios generated!")
+        return
+    
     df = pd.DataFrame(all_data)
     df.to_csv(output_file, index=False)
     print(f"\nDataset saved to {output_file}")
     print(f"Total data points: {len(df)}")
-    print(f"Scenarios: {num_scenarios}")
+    print(f"Valid scenarios: {num_scenarios - failed_scenarios}/{num_scenarios}")
+    if failed_scenarios > 0:
+        print(f"Failed scenarios: {failed_scenarios}")
     print(f"\nColumns: {list(df.columns)}")
 
 
@@ -80,4 +95,3 @@ if __name__ == "__main__":
     else:
         # Default
         generate_dataset(num_scenarios=100, output_file='train_data.csv')
-        
