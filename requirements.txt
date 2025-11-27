@@ -1,0 +1,10 @@
+# Core scientific computing
+numpy
+pandas
+
+# Machine learning
+scikit-learn
+
+# Visualization
+matplotlib
+pygame

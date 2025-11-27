@@ -1,0 +1,83 @@
+import numpy as np
+import sys
+
+from .train_simulator import TrainSimulator
+
+
+def generate_dataset(num_scenarios: int = 100, 
+                     crossing_distance: float = 2000,
+                     output_file: str = 'train_data.csv') -> None:
+    """
+    Generate diverse training scenarios.
+    
+    Variations include:
+    - Train types (passenger, freight, express)
+    - Initial speeds (40-120 km/h range, type-dependent)
+    - Grades (-3% to +3%, realistic for mainline railways)
+    - Weather conditions (clear, rain, fog)
+    
+    Args:
+        num_scenarios: Number of unique scenarios to generate
+        crossing_distance: Distance from start to crossing (meters)
+        output_file: CSV filename for output
+    """
+    import pandas as pd
+    
+    all_data = []
+    
+    for i in range(num_scenarios):
+        # Random scenario parameters
+        train_type = np.random.choice(['passenger', 'freight', 'express'])
+        
+        # Speed range depends on train type
+        if train_type == 'freight':
+            speed = np.random.uniform(40, 80)
+        elif train_type == 'express':
+            speed = np.random.uniform(80, 140)
+        else:
+            speed = np.random.uniform(50, 120)
+        
+        grade = np.random.uniform(-3, 3)
+        weather = np.random.choice(['clear', 'rain', 'fog'], p=[0.7, 0.2, 0.1])
+        
+        # Run simulation
+        sim = TrainSimulator(train_type, crossing_distance)
+        trajectory = sim.simulate_approach(speed, grade, weather)
+        
+        # Add scenario ID
+        for point in trajectory:
+            point['scenario_id'] = i
+        
+        all_data.extend(trajectory)
+        
+        if (i + 1) % 10 == 0:
+            print(f"Generated {i + 1}/{num_scenarios} scenarios")
+    
+    # Save to CSV
+    df = pd.DataFrame(all_data)
+    df.to_csv(output_file, index=False)
+    print(f"\nDataset saved to {output_file}")
+    print(f"Total data points: {len(df)}")
+    print(f"Scenarios: {num_scenarios}")
+    print(f"\nColumns: {list(df.columns)}")
+
+
+if __name__ == "__main__":
+    # Parse command line arguments
+    if len(sys.argv) > 1:
+        preset = sys.argv[1].lower()
+        
+        if preset == 'demo':
+            generate_dataset(num_scenarios=10, output_file='train_data_demo.csv')
+        elif preset == 'small':
+            generate_dataset(num_scenarios=50, output_file='train_data_small.csv')
+        elif preset == 'full':
+            generate_dataset(num_scenarios=100, output_file='train_data.csv')
+        else:
+            print(f"Unknown preset: {preset}")
+            print("Usage: python generate_dataset.py [demo|small|full]")
+            sys.exit(1)
+    else:
+        # Default
+        generate_dataset(num_scenarios=100, output_file='train_data.csv')
+        

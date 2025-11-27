@@ -1,0 +1,11 @@
+.cursor
+__pycache__
+
+# NOT IMPLEMENTED YET
+docker
+simulations
+2_model_training
+3_decision_logic
+4_arduino_deployment
+5_validation
+6_visualization
