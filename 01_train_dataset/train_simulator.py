@@ -1,8 +1,11 @@
 from typing import List
 
-from .train_types import TRAIN_TYPES
-from .train_physics import TrainPhysics
-
+try:
+    from .train_types import TRAIN_TYPES
+    from .train_physics import TrainPhysics
+except ImportError:
+    from train_types import TRAIN_TYPES
+    from train_physics import TrainPhysics
 
 class TrainSimulator:
     """
@@ -129,4 +132,3 @@ class TrainSimulator:
         self.physics.train.brake_force_service = original_brake
         
         return trajectory
-        

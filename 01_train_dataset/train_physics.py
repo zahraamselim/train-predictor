@@ -1,5 +1,7 @@
-from .train_types import TrainType
-
+try:
+    from .train_types import TrainType
+except ImportError:
+    from train_types import TrainType
 
 class TrainPhysics:
     """
@@ -130,4 +132,3 @@ class TrainPhysics:
         
         # F = ma => a = F/m
         return net_force / mass_kg
-        

@@ -1,8 +1,10 @@
 import numpy as np
 import sys
 
-from .train_simulator import TrainSimulator
-
+try:
+    from .train_simulator import TrainSimulator
+except ImportError:
+    from train_simulator import TrainSimulator
 
 def generate_dataset(num_scenarios: int = 100, 
                      crossing_distance: float = 2000,

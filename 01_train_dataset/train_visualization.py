@@ -6,9 +6,13 @@ Shows a train approaching a level crossing with real-time physics display.
 
 import pygame
 import sys
-from .train_simulator import TrainSimulator
-from .train_types import TRAIN_TYPES
 
+try:
+    from .train_simulator import TrainSimulator
+    from .train_types import TRAIN_TYPES
+except ImportError:
+    from train_simulator import TrainSimulator
+    from train_types import TRAIN_TYPES
 
 class TrainVisualization:
     """
