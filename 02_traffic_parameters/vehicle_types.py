@@ -1,18 +1,19 @@
+"""
+Vehicle type definitions loaded from config.
+"""
+
 from dataclasses import dataclass
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import load_config
+
 
 @dataclass
 class VehicleType:
-    """
-    Defines characteristics for different vehicle types.
-    
-    Parameters based on typical urban traffic:
-    - mass: Vehicle weight (kg)
-    - max_speed: Typical operating speed (km/h)
-    - max_accel: Maximum acceleration (m/s²)
-    - max_decel: Maximum comfortable braking (m/s²)
-    - length: Vehicle length (m)
-    - reaction_time: Driver reaction time (s)
-    """
+    """Vehicle characteristics."""
     name: str
     mass: float
     max_speed: float
@@ -22,41 +23,23 @@ class VehicleType:
     reaction_time: float
 
 
-VEHICLE_TYPES = {
-    'car': VehicleType(
-        name='Car',
-        mass=1500,
-        max_speed=60,
-        max_accel=2.5,
-        max_decel=4.5,
-        length=4.5,
-        reaction_time=1.5
-    ),
-    'suv': VehicleType(
-        name='SUV',
-        mass=2200,
-        max_speed=60,
-        max_accel=2.0,
-        max_decel=4.0,
-        length=5.0,
-        reaction_time=1.5
-    ),
-    'truck': VehicleType(
-        name='Truck',
-        mass=8000,
-        max_speed=50,
-        max_accel=1.0,
-        max_decel=3.0,
-        length=10.0,
-        reaction_time=2.0
-    ),
-    'motorcycle': VehicleType(
-        name='Motorcycle',
-        mass=250,
-        max_speed=70,
-        max_accel=4.0,
-        max_decel=6.0,
-        length=2.0,
-        reaction_time=1.2
-    )
-}
+def _load_vehicle_types():
+    """Load vehicle types from config."""
+    config = load_config()
+    types = {}
+    
+    for name, specs in config['vehicle_types'].items():
+        types[name] = VehicleType(
+            name=name.capitalize(),
+            mass=specs['mass'],
+            max_speed=specs['max_speed'],
+            max_accel=specs['max_accel'],
+            max_decel=specs['max_decel'],
+            length=specs['length'],
+            reaction_time=specs['reaction_time']
+        )
+    
+    return types
+
+
+VEHICLE_TYPES = _load_vehicle_types()

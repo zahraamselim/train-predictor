@@ -28,7 +28,6 @@ class TrainPhysics:
         
         power_watts = self.train.max_power * 1000
         force_from_power = power_watts / velocity
-        
         adhesion_limit = 0.30 * self.train.mass * 1000 * self.g
         
         return min(force_from_power, adhesion_limit)
@@ -40,7 +39,7 @@ class TrainPhysics:
         Args:
             velocity: Current speed in m/s
             grade: Track slope in percentage
-            weather: 'clear', 'rain', or 'fog' (affects rolling resistance)
+            weather: 'clear', 'rain', or 'fog'
         
         Returns:
             Total resistance force in N
@@ -54,10 +53,8 @@ class TrainPhysics:
             rolling_coef *= 1.10
         
         rolling_force = rolling_coef * mass_kg * self.g
-        
         air_force = 0.5 * self.air_density * self.train.drag_coefficient * \
                     self.train.frontal_area * velocity**2
-        
         grade_force = mass_kg * self.g * (grade / 100)
         
         total_resistance = rolling_force + air_force + grade_force

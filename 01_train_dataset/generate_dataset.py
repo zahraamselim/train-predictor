@@ -1,76 +1,52 @@
 import numpy as np
 import pandas as pd
 import sys
+import os
 
 try:
     from .train_simulator import TrainSimulator
-    from .config import get_config, get_unit
+    from .ir_sensors import IRSensorArray
 except ImportError:
     from train_simulator import TrainSimulator
-    from config import get_config, get_unit
+    from ir_sensors import IRSensorArray
 
-
-def simulate_IR_sensor(distance: float, weather: str, sensor_constant: float = 10000) -> float:
-    """
-    Simulate IR sensor reading with realistic noise.
-    Uses inverse square law: IR intensity = K / distance²
-    
-    Args:
-        distance: Distance from sensor to train (meters or cm depending on scale)
-        weather: 'clear', 'rain', or 'fog'
-        sensor_constant: Calibration constant K for inverse square law
-    
-    Returns:
-        IR sensor reading in arbitrary units
-    """
-    if distance <= 0.1:
-        return sensor_constant
-    
-    base_reading = sensor_constant / (distance ** 2)
-    
-    noise_factors = {'clear': 0.05, 'rain': 0.15, 'fog': 0.25}
-    noise_std = base_reading * noise_factors.get(weather, 0.05)
-    noise = np.random.normal(0, noise_std)
-    
-    return max(0, base_reading + noise)
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_scale_config
 
 
 def generate_dataset(num_scenarios: int = 100, 
                      output_file: str = 'train_data.csv') -> None:
     """
     Generate diverse training scenarios with IR sensor readings.
-    Trains are already in motion at initial_speed (not starting from rest).
     
     Args:
         num_scenarios: Number of unique scenarios to generate
         output_file: CSV filename for output
     """
-    config = get_config()
-    unit = get_unit()
+    config = get_scale_config()
+    train_config = config['train']
+    scale_mode = config['scale_mode']
+    unit = 'cm' if scale_mode == 'demo' else 'm'
     
-    crossing_distance = config['crossing_distance']
-    sensor_positions = config['sensor_positions']
+    crossing_distance = train_config['crossing_distance']
+    sensor_positions = train_config['sensor_positions']
     
     print(f"Generating {num_scenarios} scenarios")
-    print(f"Scale: {unit}")
+    print(f"Scale: {scale_mode} ({unit})")
     print(f"Crossing distance: {crossing_distance} {unit}")
     print(f"Sensor positions: {sensor_positions} {unit}")
     
+    ir_array = IRSensorArray(sensor_positions=sensor_positions)
+    train_speeds = config['train_speeds']
     all_data = []
     failed_scenarios = 0
     
     for i in range(num_scenarios):
         train_type = np.random.choice(['passenger', 'freight', 'express'])
+        speeds = train_speeds[train_type]
         
-        if train_type == 'freight':
-            initial_speed = np.random.uniform(50, 80)
-            target_speed = initial_speed + np.random.uniform(-5, 5)
-        elif train_type == 'express':
-            initial_speed = np.random.uniform(90, 140)
-            target_speed = initial_speed + np.random.uniform(-10, 10)
-        else:
-            initial_speed = np.random.uniform(60, 120)
-            target_speed = initial_speed + np.random.uniform(-8, 8)
+        initial_speed = np.random.uniform(speeds['min'], speeds['max'])
+        target_speed = initial_speed + np.random.uniform(-5, 5)
         
         grade = np.random.uniform(-2, 2)
         weather = np.random.choice(['clear', 'rain', 'fog'], p=[0.7, 0.2, 0.1])
@@ -84,13 +60,7 @@ def generate_dataset(num_scenarios: int = 100,
         
         for point in trajectory:
             train_distance = point['distance_to_crossing']
-            
-            ir_readings = []
-            for sensor_pos in sensor_positions:
-                sensor_distance = abs(train_distance - sensor_pos)
-                sensor_distance = max(sensor_distance, 0.1)
-                ir_reading = simulate_IR_sensor(sensor_distance, point['weather'])
-                ir_readings.append(round(ir_reading, 4))
+            ir_readings = ir_array.get_readings(train_distance, point['weather'])
             
             point['IR1'] = ir_readings[0]
             point['IR2'] = ir_readings[1]
@@ -109,13 +79,13 @@ def generate_dataset(num_scenarios: int = 100,
     df = pd.DataFrame(all_data)
     df.to_csv(output_file, index=False)
     
-    print(f"\nDataset saved: {output_file}")
+    print(f"Dataset saved: {output_file}")
     print(f"Total points: {len(df)}")
     print(f"Valid scenarios: {num_scenarios - failed_scenarios}/{num_scenarios}")
     if failed_scenarios > 0:
         print(f"Failed scenarios: {failed_scenarios}")
     
-    print(f"\nSample data:")
+    print(f"Sample data:")
     print(df[['distance_to_crossing', 'speed', 'ETA', 'IR1', 'IR2', 'IR3']].head(10))
 
 

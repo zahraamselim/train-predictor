@@ -1,5 +1,7 @@
 import numpy as np
 from typing import List, Dict
+import sys
+import os
 
 try:
     from .vehicle_types import VEHICLE_TYPES
@@ -8,6 +10,9 @@ except ImportError:
     from vehicle_types import VEHICLE_TYPES
     from vehicle_physics import VehiclePhysics
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_scale_config
+
 
 class TrafficSimulator:
     """Simulates traffic scenarios at road intersection before level crossing."""
@@ -15,7 +20,7 @@ class TrafficSimulator:
     def __init__(self, intersection_distance: float):
         """
         Args:
-            intersection_distance: Distance from road intersection to train crossing (meters)
+            intersection_distance: Distance from road intersection to train crossing
         """
         self.intersection_distance = intersection_distance
     
@@ -49,8 +54,13 @@ class TrafficSimulator:
             )
         
         stopping = physics.calculate_stopping_distance(initial_speed)
-        
         can_stop_before_crossing = stopping['total_distance'] < self.intersection_distance
+        
+        clearance_time = physics.calculate_clearance_time(
+            self.intersection_distance,
+            initial_speed,
+            include_vehicle_length=True
+        )
         
         return {
             'vehicle_type': vehicle_type,
@@ -60,6 +70,7 @@ class TrafficSimulator:
             'reaction_distance': stopping['reaction_distance'],
             'braking_distance': stopping['braking_distance'],
             'can_stop': can_stop_before_crossing,
+            'clearance_time': clearance_time,
             'at_intersection': at_intersection,
             'intersection_distance': self.intersection_distance
         }
@@ -83,7 +94,6 @@ class TrafficSimulator:
         
         vehicle_types = list(vehicle_mix.keys())
         probabilities = list(vehicle_mix.values())
-        
         results = []
         
         for i in range(num_vehicles):

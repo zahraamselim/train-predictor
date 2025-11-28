@@ -1,59 +1,47 @@
+"""
+Train type definitions loaded from config.
+"""
+
 from dataclasses import dataclass
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config import load_config
+
 
 @dataclass
 class TrainType:
-    """
-    Defines characteristics for different train types.
-    
-    Parameters are based on typical railway engineering values:
-    - mass: Total train weight (tonnes)
-    - max_power: Engine power (kW) - determines acceleration capability
-    - max_speed: Maximum operational speed (km/h)
-    - brake_force_service: Normal braking deceleration (m/s²)
-    - brake_force_emergency: Emergency braking deceleration (m/s²)
-    - frontal_area: Cross-sectional area (m²) - affects air resistance
-    - drag_coefficient: Aerodynamic efficiency (dimensionless)
-    """
+    """Train characteristics."""
     name: str
-    mass: float  # tonnes
-    max_power: float  # kW
-    max_speed: float  # km/h
-    brake_force_service: float  # m/s²
-    brake_force_emergency: float  # m/s²
-    frontal_area: float  # m²
+    mass: float
+    max_power: float
+    max_speed: float
+    brake_force_service: float
+    brake_force_emergency: float
+    frontal_area: float
     drag_coefficient: float
 
 
-# Realistic train type definitions
-TRAIN_TYPES = {
-    'passenger': TrainType(
-        name='Passenger',
-        mass=450,  # 6-8 coaches
-        max_power=3200,  # Modern EMU
-        max_speed=140,
-        brake_force_service=0.6,
-        brake_force_emergency=1.1,
-        frontal_area=10.5,
-        drag_coefficient=0.7
-    ),
-    'freight': TrainType(
-        name='Freight',
-        mass=3500,  # Heavy cargo
-        max_power=4500,  # Diesel locomotive
-        max_speed=80,
-        brake_force_service=0.4,
-        brake_force_emergency=0.9,
-        frontal_area=11.0,
-        drag_coefficient=0.9
-    ),
-    'express': TrainType(
-        name='Express',
-        mass=380,  # Lighter, streamlined
-        max_power=4200,
-        max_speed=160,
-        brake_force_service=0.7,
-        brake_force_emergency=1.2,
-        frontal_area=9.5,
-        drag_coefficient=0.5
-    )
-}
+def _load_train_types():
+    """Load train types from config."""
+    config = load_config()
+    types = {}
+    
+    for name, specs in config['train_types'].items():
+        types[name] = TrainType(
+            name=name.capitalize(),
+            mass=specs['mass'],
+            max_power=specs['max_power'],
+            max_speed=specs['max_speed'],
+            brake_force_service=specs['brake_force_service'],
+            brake_force_emergency=specs['brake_force_emergency'],
+            frontal_area=specs['frontal_area'],
+            drag_coefficient=specs['drag_coefficient']
+        )
+    
+    return types
+
+
+TRAIN_TYPES = _load_train_types()

@@ -1,19 +1,20 @@
 from typing import List
+import sys
+import os
 
 try:
     from .train_types import TRAIN_TYPES
     from .train_physics import TrainPhysics
-    from .config import get_config
 except ImportError:
     from train_types import TRAIN_TYPES
     from train_physics import TrainPhysics
-    from config import get_config
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import get_scale_config
 
 
 class TrainSimulator:
-    """
-    Runs train simulation scenarios and generates approach data.
-    """
+    """Runs train simulation scenarios and generates approach data."""
     
     def __init__(self, train_type: str, crossing_distance: float = None):
         """
@@ -24,10 +25,11 @@ class TrainSimulator:
         self.physics = TrainPhysics(TRAIN_TYPES[train_type])
         self.train_type = train_type
         
-        config = get_config()
-        self.crossing_distance = crossing_distance if crossing_distance else config['crossing_distance']
-        self.train_length = config['train_length']
-        self.buffer_distance = config['buffer_distance']
+        config = get_scale_config()
+        train_config = config['train']
+        self.crossing_distance = crossing_distance if crossing_distance else train_config['crossing_distance']
+        self.train_length = train_config['train_length']
+        self.buffer_distance = train_config['buffer_distance']
     
     def simulate_approach(self, 
                          initial_speed: float,

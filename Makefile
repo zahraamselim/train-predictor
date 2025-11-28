@@ -1,94 +1,155 @@
-.PHONY: help clean clean-data venv install
+.PHONY: help setup install clean clean-data clean-all \
+	train-demo train-small train-full \
+	traffic-generate traffic-analyze \
+	validate-train validate-traffic \
+	visualize-train-demo visualize-train-small visualize-train-full \
+	visualize-traffic simulate-train \
+	scale-demo scale-real \
+	lint format test docs
 
 PYTHON = python3
 VENV = .venv
 BIN = $(VENV)/bin
 
 help:
-	@echo "Level Crossing System - Makefile Commands"
+	@echo "Level Crossing Notification System"
 	@echo ""
-	@echo "Setup:"
-	@echo "  make venv                Create virtual environment"
-	@echo "  make install             Install dependencies"
+	@echo "Setup Commands:"
+	@echo "  make setup               Create virtual environment and install dependencies"
+	@echo "  make install             Install dependencies (venv must exist)"
+	@echo "  make scale-demo          Set scale to demo mode (75x75cm board)"
+	@echo "  make scale-real          Set scale to real mode (2000m distances)"
 	@echo ""
-	@echo "Train Dataset Generation:"
-	@echo "  make gen-train-demo      Generate demo train data (10 scenarios)"
-	@echo "  make gen-train-small     Generate small train data (50 scenarios)"
-	@echo "  make gen-train           Generate full train data (100 scenarios)"
+	@echo "Data Generation:"
+	@echo "  make train-demo          Generate demo train dataset (10 scenarios)"
+	@echo "  make train-small         Generate small train dataset (50 scenarios)"
+	@echo "  make train-full          Generate full train dataset (100 scenarios)"
+	@echo "  make train-all           Generate all train datasets"
 	@echo ""
-	@echo "Traffic Parameters:"
-	@echo "  make gen-traffic         Generate traffic parameters"
-	@echo "  make analyze-traffic     Analyze intersection timing scenarios"
+	@echo "  make traffic-generate    Generate traffic parameters from config"
+	@echo "  make traffic-analyze     Analyze gate timing and notification scenarios"
 	@echo ""
-	@echo "Dataset Visualization:"
-	@echo "  make vis-data-demo       Visualize demo dataset (plots/graphs)"
-	@echo "  make vis-data-small      Visualize small dataset (plots/graphs)"
-	@echo "  make vis-data            Visualize full dataset (plots/graphs)"
+	@echo "Validation & Analysis:"
+	@echo "  make validate-train      Validate train dataset integrity"
+	@echo "  make validate-traffic    Validate traffic dataset integrity"
 	@echo ""
-	@echo "Train Simulation:"
-	@echo "  make vis-train           Run live train simulation (pygame)"
+	@echo "Visualization:"
+	@echo "  make visualize-train-demo    Visualize demo train dataset"
+	@echo "  make visualize-train-small   Visualize small train dataset"
+	@echo "  make visualize-train-full    Visualize full train dataset"
+	@echo "  make visualize-traffic       Visualize traffic parameters"
+	@echo "  make visualize-all           Generate all visualizations"
+	@echo ""
+	@echo "Simulation:"
+	@echo "  make simulate-train      Run live train simulation (pygame)"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make lint                Run code linter (pylint)"
+	@echo "  make format              Format code with black"
+	@echo "  make test                Run tests (if available)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean               Remove virtual environment"
-	@echo "  make clean-data          Remove generated data files"
-	@echo "  make clean-all           Remove everything (venv + data)"
+	@echo "  make clean-data          Remove generated datasets and plots"
+	@echo "  make clean-all           Remove venv and all generated data"
+
+setup: venv install
+	@echo "Setup complete. Activate venv with: source $(BIN)/activate"
 
 venv:
 	@echo "Creating virtual environment..."
 	$(PYTHON) -m venv $(VENV)
-	@echo "Virtual environment created. Activate with: source $(BIN)/activate"
+	@echo "Virtual environment created."
 
-install: venv
+install:
 	@echo "Installing dependencies..."
-	$(BIN)/pip install --upgrade pip
+	$(BIN)/pip install --upgrade pip setuptools wheel
 	$(BIN)/pip install -r requirements.txt
 	@echo "Dependencies installed."
 
-scale-real:
-	@echo "Setting scale to REAL (2000m distances)..."
-	@sed -i "s/SCALE_MODE = .*/SCALE_MODE = 'real'/" 01_train_dataset/config.py
-	@echo "Scale set to REAL"
-
 scale-demo:
-	@echo "Setting scale to DEMO (75x75cm board)..."
-	@sed -i "s/SCALE_MODE = .*/SCALE_MODE = 'demo'/" 01_train_dataset/config.py
-	@echo "Scale set to DEMO"
+	@echo "Setting scale to demo mode..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from config import set_scale_mode; set_scale_mode('demo')"
+	@echo "Scale set to demo (cm)"
 
-gen-train-demo:
+scale-real:
+	@echo "Setting scale to real mode..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from config import set_scale_mode; set_scale_mode('real')"
+	@echo "Scale set to real (m)"
+
+train-demo:
 	@echo "Generating demo train dataset (10 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=10, output_file='01_train_dataset/data/train_data_demo.csv')"
+	@mkdir -p 01_train_dataset/data
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=10, output_file='01_train_dataset/data/train_data_demo.csv')"
 
-gen-train-small:
+train-small:
 	@echo "Generating small train dataset (50 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=50, output_file='01_train_dataset/data/train_data_small.csv')"
+	@mkdir -p 01_train_dataset/data
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=50, output_file='01_train_dataset/data/train_data_small.csv')"
 
-gen-train:
+train-full:
 	@echo "Generating full train dataset (100 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')"
+	@mkdir -p 01_train_dataset/data
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')"
 
-gen-traffic:
+train-all: train-demo train-small train-full
+	@echo "All train datasets generated."
+
+traffic-generate:
 	@echo "Generating traffic parameters..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('02_traffic_parameters.generate_parameters'); m.generate_traffic_parameters(output_file='02_traffic_parameters/data/traffic_parameters.csv')"
+	@mkdir -p 02_traffic_parameters/data
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 02_traffic_parameters.generate_parameters import generate_traffic_parameters; generate_traffic_parameters(output_file='02_traffic_parameters/data/traffic_parameters.csv')"
 
-analyze-traffic:
+traffic-analyze:
 	@echo "Analyzing intersection timing scenarios..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('02_traffic_parameters.generate_parameters'); m.analyze_intersection_scenarios()"
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 02_traffic_parameters.generate_parameters import analyze_intersection_scenarios; analyze_intersection_scenarios()"
 
-vis-data-demo:
+validate-train:
+	@echo "Validating train datasets..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 06_validation.validate_data import validate_train_data; validate_train_data()"
+
+validate-traffic:
+	@echo "Validating traffic datasets..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 06_validation.validate_data import validate_traffic_data; validate_traffic_data()"
+
+visualize-train-demo:
 	@echo "Visualizing demo train dataset..."
+	@mkdir -p 06_validation/plots
 	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_demo.csv
 
-vis-data-small:
+visualize-train-small:
 	@echo "Visualizing small train dataset..."
+	@mkdir -p 06_validation/plots
 	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_small.csv
 
-vis-data:
+visualize-train-full:
 	@echo "Visualizing full train dataset..."
+	@mkdir -p 06_validation/plots
 	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data.csv
 
-vis-train:
+visualize-traffic:
+	@echo "Visualizing traffic parameters..."
+	@mkdir -p 06_validation/plots
+	$(BIN)/python 06_validation/visualize_traffic.py 02_traffic_parameters/data/traffic_parameters.csv
+
+visualize-all: visualize-train-demo visualize-train-small visualize-train-full visualize-traffic
+	@echo "All visualizations generated."
+
+simulate-train:
 	@echo "Running live train simulation..."
 	$(BIN)/python 05_simulation/train_visualization.py
+
+lint:
+	@echo "Running code linter..."
+	$(BIN)/pylint 01_train_dataset/ 02_traffic_parameters/ || true
+
+format:
+	@echo "Formatting code with black..."
+	$(BIN)/black 01_train_dataset/ 02_traffic_parameters/ config/
+
+test:
+	@echo "Running tests..."
+	$(BIN)/pytest tests/ -v || true
 
 clean:
 	@echo "Removing virtual environment..."
@@ -96,11 +157,13 @@ clean:
 	@echo "Virtual environment removed."
 
 clean-data:
-	@echo "Removing generated data files..."
+	@echo "Removing generated data and visualizations..."
 	rm -f 01_train_dataset/data/*.csv
 	rm -f 02_traffic_parameters/data/*.csv
 	rm -f 06_validation/plots/*.png
 	@echo "Data files removed."
 
 clean-all: clean clean-data
-	@echo "Cleanup complete."
+	@echo "Complete cleanup finished."
+
+.DEFAULT_GOAL := help

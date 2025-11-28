@@ -26,7 +26,6 @@ class VehiclePhysics:
             reaction_time = self.vehicle.reaction_time
         
         speed_ms = initial_speed / 3.6
-        
         reaction_distance = speed_ms * reaction_time
         
         if speed_ms > 0:

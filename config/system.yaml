@@ -1,0 +1,129 @@
+system:
+  scale_mode: demo
+  scale_factor: 33.33
+
+train:
+  real_scale:
+    crossing_distance: 2000
+    sensor_positions: [400, 250, 100]
+    train_length: 150
+    intersection_distances: [300, 500, 1000]
+    buffer_distance: 300
+
+  demo_scale:
+    crossing_distance: 60
+    sensor_positions: [12, 7.5, 3]
+    train_length: 4.5
+    intersection_distances: [9, 15, 30]
+    buffer_distance: 9
+
+traffic:
+  real_scale:
+    intersection_distances: [300, 500, 1000]
+    avg_vehicle_speed: 15
+    safety_buffer: 2.0
+
+  demo_scale:
+    intersection_distances: [9, 15, 30]
+    avg_vehicle_speed: 15
+    safety_buffer: 2.0
+
+train_types:
+  passenger:
+    mass: 450
+    max_power: 3200
+    max_speed: 140
+    brake_force_service: 0.6
+    brake_force_emergency: 1.1
+    frontal_area: 10.5
+    drag_coefficient: 0.7
+
+  freight:
+    mass: 3500
+    max_power: 4500
+    max_speed: 80
+    brake_force_service: 0.4
+    brake_force_emergency: 0.9
+    frontal_area: 11.0
+    drag_coefficient: 0.9
+
+  express:
+    mass: 380
+    max_power: 4200
+    max_speed: 160
+    brake_force_service: 0.7
+    brake_force_emergency: 1.2
+    frontal_area: 9.5
+    drag_coefficient: 0.5
+
+train_speeds:
+  passenger:
+    min: 60
+    max: 120
+
+  freight:
+    min: 50
+    max: 80
+
+  express:
+    min: 90
+    max: 140
+
+vehicle_types:
+  car:
+    mass: 1500
+    max_speed: 60
+    max_accel: 2.5
+    max_decel: 4.5
+    length: 4.5
+    reaction_time: 1.5
+
+  suv:
+    mass: 2200
+    max_speed: 60
+    max_accel: 2.0
+    max_decel: 4.0
+    length: 5.0
+    reaction_time: 1.5
+
+  truck:
+    mass: 8000
+    max_speed: 50
+    max_accel: 1.0
+    max_decel: 3.0
+    length: 10.0
+    reaction_time: 2.0
+
+  motorcycle:
+    mass: 250
+    max_speed: 70
+    max_accel: 4.0
+    max_decel: 6.0
+    length: 2.0
+    reaction_time: 1.2
+
+ir_sensors:
+  sensor_constant: 10000
+  noise_factors:
+    clear: 0.05
+    rain: 0.15
+    fog: 0.25
+
+gates:
+  closure_before_eta: 10.0
+
+vehicle_clearance:
+  light_density:
+    min_time: 8.5
+    max_time: 12.3
+    avg_time: 10.2
+
+  medium_density:
+    min_time: 9.1
+    max_time: 15.8
+    avg_time: 12.4
+
+  heavy_density:
+    min_time: 10.2
+    max_time: 18.5
+    avg_time: 14.3
