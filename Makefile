@@ -16,6 +16,10 @@ help:
 	@echo "  make gen-train-small     Generate small train data (50 scenarios)"
 	@echo "  make gen-train           Generate full train data (100 scenarios)"
 	@echo ""
+	@echo "Traffic Parameters:"
+	@echo "  make gen-traffic         Generate traffic parameters"
+	@echo "  make analyze-traffic     Analyze intersection timing scenarios"
+	@echo ""
 	@echo "Dataset Visualization:"
 	@echo "  make vis-data-demo       Visualize demo dataset (plots/graphs)"
 	@echo "  make vis-data-small      Visualize small dataset (plots/graphs)"
@@ -62,21 +66,29 @@ gen-train:
 	@echo "Generating full train dataset (100 scenarios)..."
 	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')"
 
+gen-traffic:
+	@echo "Generating traffic parameters..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('02_traffic_parameters.generate_parameters'); m.generate_traffic_parameters(output_file='02_traffic_parameters/data/traffic_parameters.csv')"
+
+analyze-traffic:
+	@echo "Analyzing intersection timing scenarios..."
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('02_traffic_parameters.generate_parameters'); m.analyze_intersection_scenarios()"
+
 vis-data-demo:
 	@echo "Visualizing demo train dataset..."
-	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data_demo.csv
+	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_demo.csv
 
 vis-data-small:
 	@echo "Visualizing small train dataset..."
-	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data_small.csv
+	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_small.csv
 
 vis-data:
 	@echo "Visualizing full train dataset..."
-	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data.csv
+	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data.csv
 
 vis-train:
 	@echo "Running live train simulation..."
-	$(BIN)/python 01_train_dataset/train_visualization.py
+	$(BIN)/python 05_simulation/train_visualization.py
 
 clean:
 	@echo "Removing virtual environment..."
@@ -86,7 +98,8 @@ clean:
 clean-data:
 	@echo "Removing generated data files..."
 	rm -f 01_train_dataset/data/*.csv
-	rm -f 01_train_dataset/plots/*.png
+	rm -f 02_traffic_parameters/data/*.csv
+	rm -f 06_validation/plots/*.png
 	@echo "Data files removed."
 
 clean-all: clean clean-data
