@@ -8,16 +8,21 @@ help:
 	@echo "Level Crossing System - Makefile Commands"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make venv            Create virtual environment"
-	@echo "  make install         Install dependencies"
+	@echo "  make venv                Create virtual environment"
+	@echo "  make install             Install dependencies"
 	@echo ""
 	@echo "Train Dataset Generation:"
 	@echo "  make gen-train-demo      Generate demo train data (10 scenarios)"
 	@echo "  make gen-train-small     Generate small train data (50 scenarios)"
-	@echo "  make gen-train-full      Generate full train data (100 scenarios)"
-	@echo "  make vis-train-demo      Visualize demo dataset (plots/graphs)"
-	@echo "  make vis-train-data      Visualize full dataset (plots/graphs)"
-	@echo "  make vis-train-sim       Run live train simulation (pygame)"
+	@echo "  make gen-train           Generate full train data (100 scenarios)"
+	@echo ""
+	@echo "Dataset Visualization:"
+	@echo "  make vis-data-demo       Visualize demo dataset (plots/graphs)"
+	@echo "  make vis-data-small      Visualize small dataset (plots/graphs)"
+	@echo "  make vis-data            Visualize full dataset (plots/graphs)"
+	@echo ""
+	@echo "Train Simulation:"
+	@echo "  make vis-train           Run live train simulation (pygame)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean               Remove virtual environment"
@@ -35,29 +40,43 @@ install: venv
 	$(BIN)/pip install -r requirements.txt
 	@echo "Dependencies installed."
 
+scale-real:
+	@echo "Setting scale to REAL (2000m distances)..."
+	@sed -i "s/SCALE_MODE = .*/SCALE_MODE = 'real'/" 01_train_dataset/config.py
+	@echo "Scale set to REAL"
+
+scale-demo:
+	@echo "Setting scale to DEMO (75x75cm board)..."
+	@sed -i "s/SCALE_MODE = .*/SCALE_MODE = 'demo'/" 01_train_dataset/config.py
+	@echo "Scale set to DEMO"
+
 gen-train-demo:
 	@echo "Generating demo train dataset (10 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=10, output_file='01_train_dataset/train_data_demo.csv')"
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=10, output_file='01_train_dataset/data/train_data_demo.csv')"
 
 gen-train-small:
 	@echo "Generating small train dataset (50 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=50, output_file='01_train_dataset/train_data_small.csv')"
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=50, output_file='01_train_dataset/data/train_data_small.csv')"
 
-gen-train-full:
+gen-train:
 	@echo "Generating full train dataset (100 scenarios)..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=100, output_file='01_train_dataset/train_data.csv')"
+	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); import importlib; m = importlib.import_module('01_train_dataset.generate_dataset'); m.generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')"
 
-vis-train-demo:
+vis-data-demo:
 	@echo "Visualizing demo train dataset..."
-	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/train_data_demo.csv
+	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data_demo.csv
 
-vis-train-data:
-	@echo "Visualizing train dataset..."
-	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/train_data.csv
+vis-data-small:
+	@echo "Visualizing small train dataset..."
+	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data_small.csv
 
-vis-train-sim:
+vis-data:
+	@echo "Visualizing full train dataset..."
+	$(BIN)/python 01_train_dataset/visualize_dataset.py 01_train_dataset/data/train_data.csv
+
+vis-train:
 	@echo "Running live train simulation..."
-	$(BIN)/python 01_train_dataset/simulate_train.py
+	$(BIN)/python 01_train_dataset/train_visualization.py
 
 clean:
 	@echo "Removing virtual environment..."
@@ -66,8 +85,8 @@ clean:
 
 clean-data:
 	@echo "Removing generated data files..."
-	rm -f 01_train_dataset/*.csv
-	rm -f 01_train_dataset/*.png
+	rm -f 01_train_dataset/data/*.csv
+	rm -f 01_train_dataset/plots/*.png
 	@echo "Data files removed."
 
 clean-all: clean clean-data
