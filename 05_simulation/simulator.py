@@ -37,11 +37,8 @@ class CrossingSimulator:
         for crossing in crossings:
             cx, cy = crossing['x'], crossing['y']
             
-            left_top_gate = RailwayGate(cx, cy - 40, 'left')
-            right_top_gate = RailwayGate(cx, cy - 40, 'right')
-            left_bottom_gate = RailwayGate(cx, cy + 40, 'left')
-            right_bottom_gate = RailwayGate(cx, cy + 40, 'right')
-            self.gates.extend([left_top_gate, right_top_gate, left_bottom_gate, right_bottom_gate])
+            gate = RailwayGate(cx, cy - 10, 'left')
+            self.gates.append(gate)
             
             light = TrafficLight(cx - 65, cy - 80)
             light.set_state('green')
