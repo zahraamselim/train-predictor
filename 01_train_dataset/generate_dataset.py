@@ -91,9 +91,9 @@ def generate_dataset(num_scenarios: int = 100,
 
 if __name__ == "__main__":
     presets = {
-        'demo': (10, 'train_data_demo.csv'),
-        'small': (50, 'train_data_small.csv'),
-        'full': (100, 'train_data.csv')
+        'demo': (10, '01_train_dataset/data/train_data_demo.csv'),
+        'small': (50, '01_train_dataset/data/train_data_small.csv'),
+        'full': (100, '01_train_dataset/data/train_data.csv')
     }
     
     if len(sys.argv) > 1:
@@ -103,7 +103,7 @@ if __name__ == "__main__":
             generate_dataset(num_scenarios=num, output_file=filename)
         else:
             print(f"Unknown preset: {preset}")
-            print(f"Usage: python generate_dataset.py [{'/'.join(presets.keys())}]")
+            print(f"Usage: python -m 01_train_dataset.generate_dataset [{'/'.join(presets.keys())}]")
             sys.exit(1)
     else:
-        generate_dataset(num_scenarios=100, output_file='train_data.csv')
+        generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')

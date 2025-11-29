@@ -136,15 +136,15 @@ if __name__ == "__main__":
         command = sys.argv[1].lower()
         
         if command == 'generate':
-            generate_traffic_parameters()
+            generate_traffic_parameters('02_traffic_parameters/data/traffic_parameters.csv')
         elif command == 'analyze':
             analyze_intersection_scenarios()
         else:
             print(f"Unknown command: {command}")
-            print("Usage: python generate_parameters.py [generate|analyze]")
+            print("Usage: python -m 02_traffic_parameters.generate_parameters [generate|analyze]")
             sys.exit(1)
     else:
         print("Generating traffic parameters...")
-        generate_traffic_parameters()
+        generate_traffic_parameters('02_traffic_parameters/data/traffic_parameters.csv')
         print("\nAnalyzing scenarios...")
         analyze_intersection_scenarios()

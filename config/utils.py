@@ -62,9 +62,9 @@ def update_vehicle_clearance(density, min_time, max_time, avg_time):
     """Update vehicle clearance times after traffic simulation."""
     config = load_config()
     config['vehicle_clearance'][density] = {
-        'min_time': min_time,
-        'max_time': max_time,
-        'avg_time': avg_time
+        'min_time': float(min_time),
+        'max_time': float(max_time),
+        'avg_time': float(avg_time)
     }
     save_config(config)
 
@@ -77,3 +77,19 @@ def set_scale_mode(mode):
     config = load_config()
     config['system']['scale_mode'] = mode
     save_config(config)
+
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        mode = sys.argv[1].lower()
+        try:
+            set_scale_mode(mode)
+            print(f"Scale mode set to: {mode}")
+        except ValueError as e:
+            print(f"Error: {e}")
+            print("Usage: python -m config.utils [demo|real]")
+            sys.exit(1)
+    else:
+        config = load_config()
+        print(f"Current scale mode: {config['system']['scale_mode']}")

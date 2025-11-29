@@ -69,28 +69,28 @@ install:
 
 scale-demo:
 	@echo "Setting scale to demo mode..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from config import set_scale_mode; set_scale_mode('demo')"
+	$(BIN)/python -m config.utils demo
 	@echo "Scale set to demo (cm)"
 
 scale-real:
 	@echo "Setting scale to real mode..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from config import set_scale_mode; set_scale_mode('real')"
+	$(BIN)/python -m config.utils real
 	@echo "Scale set to real (m)"
 
 train-demo:
 	@echo "Generating demo train dataset (10 scenarios)..."
 	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=10, output_file='01_train_dataset/data/train_data_demo.csv')"
+	$(BIN)/python -m 01_train_dataset.generate_dataset demo
 
 train-small:
 	@echo "Generating small train dataset (50 scenarios)..."
 	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=50, output_file='01_train_dataset/data/train_data_small.csv')"
+	$(BIN)/python -m 01_train_dataset.generate_dataset small
 
 train-full:
 	@echo "Generating full train dataset (100 scenarios)..."
 	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 01_train_dataset.generate_dataset import generate_dataset; generate_dataset(num_scenarios=100, output_file='01_train_dataset/data/train_data.csv')"
+	$(BIN)/python -m 01_train_dataset.generate_dataset full
 
 train-all: train-demo train-small train-full
 	@echo "All train datasets generated."
@@ -98,50 +98,50 @@ train-all: train-demo train-small train-full
 traffic-generate:
 	@echo "Generating traffic parameters..."
 	@mkdir -p 02_traffic_parameters/data
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 02_traffic_parameters.generate_parameters import generate_traffic_parameters; generate_traffic_parameters(output_file='02_traffic_parameters/data/traffic_parameters.csv')"
+	$(BIN)/python -m 02_traffic_parameters.generate_parameters generate
 
 traffic-analyze:
 	@echo "Analyzing intersection timing scenarios..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 02_traffic_parameters.generate_parameters import analyze_intersection_scenarios; analyze_intersection_scenarios()"
+	$(BIN)/python -m 02_traffic_parameters.generate_parameters analyze
 
 validate-train:
 	@echo "Validating train datasets..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 06_validation.validate_data import validate_train_data; validate_train_data()"
+	$(BIN)/python -m 06_validation.validate_data train
 
 validate-traffic:
 	@echo "Validating traffic datasets..."
-	$(BIN)/python -c "import sys; sys.path.insert(0, '.'); from 06_validation.validate_data import validate_traffic_data; validate_traffic_data()"
+	$(BIN)/python -m 06_validation.validate_data traffic
 
 visualize-train-demo:
 	@echo "Visualizing demo train dataset..."
 	@mkdir -p 06_validation/plots
-	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_demo.csv
+	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data_demo.csv
 
 visualize-train-small:
 	@echo "Visualizing small train dataset..."
 	@mkdir -p 06_validation/plots
-	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data_small.csv
+	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data_small.csv
 
 visualize-train-full:
 	@echo "Visualizing full train dataset..."
 	@mkdir -p 06_validation/plots
-	$(BIN)/python 06_validation/visualize_dataset.py 01_train_dataset/data/train_data.csv
+	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data.csv
 
 visualize-traffic:
 	@echo "Visualizing traffic parameters..."
 	@mkdir -p 06_validation/plots
-	$(BIN)/python 06_validation/visualize_traffic.py 02_traffic_parameters/data/traffic_parameters.csv
+	$(BIN)/python -m 06_validation.visualize_traffic 02_traffic_parameters/data/traffic_parameters.csv
 
 visualize-all: visualize-train-demo visualize-train-small visualize-train-full visualize-traffic
 	@echo "All visualizations generated."
 
 simulate-train:
 	@echo "Running live train simulation..."
-	$(BIN)/python 05_simulation/train_visualization.py
+	$(BIN)/python -m 05_simulation.train_visualization
 
 lint:
 	@echo "Running code linter..."
-	$(BIN)/pylint 01_train_dataset/ 02_traffic_parameters/ || true
+	$(BIN)/pylint 01_train_dataset/ 02_traffic_parameters/ config/ || true
 
 format:
 	@echo "Formatting code with black..."

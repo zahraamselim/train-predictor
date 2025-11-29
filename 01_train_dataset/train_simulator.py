@@ -72,7 +72,7 @@ class TrainSimulator:
             else:
                 crossing_status = 'cleared'
             
-            accel = self.physics.calculate_acceleration(speed, grade, target_speed_ms, braking=None)
+            accel = self.physics.calculate_acceleration(speed, grade, target_speed_ms, weather, braking=None)
             
             max_speed_ms = self.physics.train.max_speed / 3.6
             if speed > max_speed_ms:
@@ -82,10 +82,11 @@ class TrainSimulator:
             speed_new = max(0, speed + accel * dt)
             distance_new = distance - (speed * dt + 0.5 * accel * dt**2)
             
-            if abs(distance - last_distance) < 0.01:
+            if abs(distance - last_distance) < 0.001 and distance > 0:
                 stall_counter += 1
-                if stall_counter > 100:
-                    distance_new = distance - 0.1
+                if stall_counter > 50:
+                    print(f"Warning: Train stalled at {distance:.2f}m - insufficient power for grade {grade}%")
+                    break
             else:
                 stall_counter = 0
             
@@ -113,6 +114,7 @@ class TrainSimulator:
             time += dt
             
             if time > 300:
+                print(f"Warning: Simulation timeout at {time}s")
                 break
         
         return trajectory

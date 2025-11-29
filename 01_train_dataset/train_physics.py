@@ -95,8 +95,14 @@ class TrainPhysics:
         else:
             resistance = self.calculate_resistance(velocity, grade, weather)
             
-            if target_speed is not None and velocity >= target_speed - 0.5:
-                traction = 0
+            if target_speed is not None:
+                speed_error = target_speed - velocity
+                if speed_error < 0:
+                    traction = 0
+                elif abs(speed_error) < 0.5:
+                    traction = self.calculate_tractive_force(velocity) * (speed_error / 0.5)
+                else:
+                    traction = self.calculate_tractive_force(velocity)
             else:
                 traction = self.calculate_tractive_force(velocity)
             

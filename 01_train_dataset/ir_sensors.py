@@ -13,16 +13,19 @@ from config import load_config
 class IRSensorArray:
     """Manages IR sensor placement and readings."""
     
-    def __init__(self, sensor_positions: list = None, sensor_constant: float = None):
+    def __init__(self, sensor_positions: list = None, sensor_constant: float = None, saturation_distance: float = None):
         """
         Args:
             sensor_positions: List of distances from crossing where sensors are placed
             sensor_constant: Calibration constant K for inverse square law
+            saturation_distance: Distance below which sensor saturates (m)
         """
         config = load_config()
-        self.sensor_positions = sensor_positions or config['ir_sensors']['sensor_positions']
-        self.sensor_constant = sensor_constant or config['ir_sensors']['sensor_constant']
-        self.noise_factors = config['ir_sensors']['noise_factors']
+        ir_config = config['ir_sensors']
+        self.sensor_positions = sensor_positions or ir_config['sensor_positions']
+        self.sensor_constant = sensor_constant or ir_config['sensor_constant']
+        self.saturation_distance = saturation_distance or ir_config.get('saturation_distance', 0.1)
+        self.noise_factors = ir_config['noise_factors']
     
     def get_sensor_positions(self):
         """Get sensor positions."""
@@ -40,7 +43,7 @@ class IRSensorArray:
         Returns:
             IR sensor reading in arbitrary units
         """
-        if distance <= 0.1:
+        if distance <= self.saturation_distance:
             return self.sensor_constant
         
         base_reading = self.sensor_constant / (distance ** 2)
@@ -63,7 +66,7 @@ class IRSensorArray:
         readings = []
         for sensor_pos in self.sensor_positions:
             sensor_distance = abs(train_distance - sensor_pos)
-            sensor_distance = max(sensor_distance, 0.1)
+            sensor_distance = max(sensor_distance, self.saturation_distance)
             reading = self.simulate_reading(sensor_distance, weather)
             readings.append(round(reading, 4))
         return readings
