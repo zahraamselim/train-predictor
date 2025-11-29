@@ -1,13 +1,9 @@
-.PHONY: help setup install clean clean-data clean-all \
-	traffic-generate traffic-analyze \
-	sensors-calculate sensors-apply \
-	train-demo train-small train-full \
-	model-train-demo model-train-small model-train-full \
-	validate-traffic validate-train validate-model validate-all \
-	workflow-demo workflow-full \
+.PHONY: help setup install clean \
+	data-traffic data-train data-decisions data-all \
+	ml-train ml-test \
 	simulate \
-	scale-demo scale-real \
-	lint format test
+	validate-all \
+	scale-demo scale-real
 
 PYTHON = python3
 VENV = .venv
@@ -16,202 +12,119 @@ BIN = $(VENV)/bin
 help:
 	@echo "Level Crossing Notification System"
 	@echo ""
-	@echo "Setup Commands:"
-	@echo "  make setup               Create virtual environment and install dependencies"
-	@echo "  make install             Install dependencies (venv must exist)"
-	@echo "  make scale-demo          Set scale to demo mode (75x75cm board)"
-	@echo "  make scale-real          Set scale to real mode (2000m distances)"
+	@echo "Setup:"
+	@echo "  make setup               Create venv and install dependencies"
+	@echo "  make scale-demo          Switch to demo scale (75cm board)"
+	@echo "  make scale-real          Switch to real scale (3km distances)"
 	@echo ""
-	@echo "CORRECT WORKFLOW (run in this order):"
-	@echo "  1. make traffic-generate      Generate traffic clearance data"
-	@echo "  2. make sensors-calculate     Calculate sensor positions (view only)"
-	@echo "  3. make sensors-apply         Apply sensor positions to config"
-	@echo "  4. make train-[demo|small|full]  Generate train dataset"
-	@echo "  5. make model-train-[demo|small|full]  Train ML models"
-	@echo "  6. make validate-all          Validate all outputs"
+	@echo "Data Generation:"
+	@echo "  make data-traffic        Generate traffic clearance data"
+	@echo "  make data-train          Generate train approach data (100 scenarios)"
+	@echo "  make data-train-small    Generate small dataset (50 scenarios)"
+	@echo "  make data-decisions      Generate decision data for ML (500 scenarios)"
+	@echo "  make data-all            Generate all datasets"
 	@echo ""
-	@echo "Quick Commands:"
-	@echo "  make workflow-demo       Run full workflow with demo dataset"
-	@echo "  make workflow-full       Run full workflow with full dataset"
-	@echo ""
-	@echo "Individual Steps:"
-	@echo "  make traffic-generate    Generate traffic parameters"
-	@echo "  make traffic-analyze     Analyze gate timing scenarios"
-	@echo "  make sensors-calculate   Calculate optimal sensor positions"
-	@echo "  make sensors-apply       Apply calculated positions to config"
-	@echo ""
-	@echo "  make train-demo          Generate demo train dataset (10 scenarios)"
-	@echo "  make train-small         Generate small train dataset (50 scenarios)"
-	@echo "  make train-full          Generate full train dataset (100 scenarios)"
-	@echo ""
-	@echo "  make model-train-demo    Train models on demo dataset"
-	@echo "  make model-train-small   Train models on small dataset"
-	@echo "  make model-train-full    Train models on full dataset"
-	@echo ""
-	@echo "Validation Commands:"
-	@echo "  make validate-traffic    Validate traffic module output"
-	@echo "  make validate-train      Validate train dataset output"
-	@echo "  make validate-model      Validate model training output"
-	@echo "  make validate-all        Run all validations"
+	@echo "Machine Learning:"
+	@echo "  make ml-train            Train route optimizer model"
+	@echo "  make ml-test             Test trained model"
 	@echo ""
 	@echo "Simulation:"
-	@echo "  make simulate            Run crossing simulation (pygame)"
+	@echo "  make simulate            Run pygame simulation"
+	@echo ""
+	@echo "Validation:"
+	@echo "  make validate-all        Validate all generated data"
+	@echo ""
+	@echo "Complete Workflow:"
+	@echo "  make workflow            Run complete pipeline: data -> ml -> validate"
 	@echo ""
 	@echo "Cleanup:"
-	@echo "  make clean               Remove virtual environment"
-	@echo "  make clean-data          Remove generated datasets and plots"
-	@echo "  make clean-all           Remove venv and all generated data"
+	@echo "  make clean               Remove venv"
+	@echo "  make clean-data          Remove generated data"
+	@echo "  make clean-all           Remove everything"
 
 setup: venv install
-	@echo "Setup complete. Activate venv with: source $(BIN)/activate"
+	@echo "Setup complete. Activate with: source $(BIN)/activate"
 
 venv:
 	@echo "Creating virtual environment..."
 	$(PYTHON) -m venv $(VENV)
-	@echo "Virtual environment created."
 
 install:
 	@echo "Installing dependencies..."
-	$(BIN)/pip install --upgrade pip setuptools wheel
+	$(BIN)/pip install --upgrade pip
 	$(BIN)/pip install -r requirements.txt
-	@echo "Dependencies installed."
 
 scale-demo:
-	@echo "Setting scale to demo mode..."
+	@echo "Switching to demo scale (cm)..."
 	$(BIN)/python -m config.utils demo
-	@echo "Scale set to demo (cm)"
 
 scale-real:
-	@echo "Setting scale to real mode..."
+	@echo "Switching to real scale (m)..."
 	$(BIN)/python -m config.utils real
-	@echo "Scale set to real (m)"
 
-traffic-generate:
-	@echo "Generating traffic parameters..."
-	$(BIN)/python -m 01_traffic.generate
+data-traffic:
+	@echo "Generating traffic clearance data..."
+	$(BIN)/python -m data_generation.generate_traffic
 
-traffic-validate:
-	@echo "Validating traffic module..."
-	$(BIN)/python -m 01_traffic.generate validate
+data-train:
+	@echo "Generating train approach data (100 scenarios)..."
+	$(BIN)/python -m data_generation.generate_train
 
-traffic-clean:
-	@echo "Removing traffic data..."
-	rm -f 01_traffic/data/*.csv
-
-sensors-calculate:
-	@echo "Calculating sensor positions..."
-	$(BIN)/python -m 02_sensors.positioning calculate
-
-sensors-apply:
-	@echo "Applying sensor positions to config..."
-	$(BIN)/python -m 02_sensors.positioning apply
-
-sensors-validate:
-	@echo "Validating sensor configuration..."
-	$(BIN)/python -m 02_sensors.positioning validate
-
-train-generate:
-	@echo "Generating train dataset (100 scenarios)..."
-	$(BIN)/python -m 03_train.simulator
-
-train-generate-demo:
-	@echo "Generating demo dataset (10 scenarios)..."
-	$(BIN)/python -m 03_train.simulator demo
-
-train-generate-small:
-	@echo "Generating small dataset (50 scenarios)..."
-	$(BIN)/python -m 03_train.simulator small
-
-train-validate:
-	@echo "Validating train module..."
-	$(BIN)/python -m 03_train.simulator validate
-
-prediction-validate:
-	@echo "Validating prediction module..."
-	$(BIN)/python -m 04_prediction.validate
-
-integration-validate:
-	@echo "Validating integration module..."
-	$(BIN)/python -m 05_integration.validate
-
-validate-all: traffic-validate sensors-validate train-validate prediction-validate integration-validate
-	@echo "ALL MODULES VALIDATED SUCCESSFULLY"
-
-workflow-full: traffic-generate sensors-apply train-generate validate-all
-	@echo "COMPLETE SYSTEM READY"
-
-train-demo:
-	@echo "Generating demo train dataset (10 scenarios)..."
-	$(BIN)/python -m 02_train.generate_dataset demo
-
-train-small:
+data-train-small:
 	@echo "Generating small train dataset (50 scenarios)..."
-	$(BIN)/python -m 02_train.generate_dataset small
+	$(BIN)/python -m data_generation.generate_train small
 
-train-full:
-	@echo "Generating full train dataset (100 scenarios)..."
-	$(BIN)/python -m 02_train.generate_dataset full
+data-decisions:
+	@echo "Generating decision data for ML..."
+	$(BIN)/python -m data_generation.generate_decisions
 
-model-train-demo:
-	@echo "Training models on demo dataset..."
-	$(BIN)/python -m 03_model.train_model 02_train/data/train_data_demo.csv
+data-all: data-traffic data-train data-decisions
+	@echo "All datasets generated"
 
-model-train-small:
-	@echo "Training models on small dataset..."
-	$(BIN)/python -m 03_model.train_model 02_train/data/train_data_small.csv
+ml-train:
+	@echo "Training route optimizer..."
+	$(BIN)/python -m ml.route_optimizer
 
-model-train-full:
-	@echo "Training models on full dataset..."
-	$(BIN)/python -m 03_model.train_model
-
-validate-traffic:
-	@echo "Validating traffic module..."
-	$(BIN)/python -m 06_validation.validate_traffic
-
-validate-train:
-	@echo "Validating train dataset module..."
-	$(BIN)/python -m 06_validation.validate_train
-
-validate-model:
-	@echo "Validating model training module..."
-	$(BIN)/python -m 06_validation.validate_model
-
-validate-all:
-	@echo "Running all validations..."
-	$(BIN)/python -m 06_validation.validate_all
+ml-test:
+	@echo "Testing route optimizer..."
+	$(BIN)/python -c "from ml.route_optimizer import RouteOptimizer; \
+		opt = RouteOptimizer('ml/models/route_optimizer.pkl'); \
+		result = opt.predict(45, 5, 'medium', 500, 1200); \
+		print(f'Test prediction: {result}')"
 
 simulate:
-	@echo "Running crossing simulation..."
-	$(BIN)/python -m 05_simulation.simulator
+	@echo "Starting simulation..."
+	$(BIN)/python -m simulation.main
 
-lint:
-	@echo "Running code linter..."
-	$(BIN)/pylint 01_traffic/ 02_train/ 03_model/ config/ 06_validation/ || true
+validate-traffic:
+	@echo "Validating traffic data..."
+	$(BIN)/python -m data_generation.generate_traffic validate
 
-format:
-	@echo "Formatting code with black..."
-	$(BIN)/black 01_traffic/ 02_train/ 03_model/ config/ 06_validation/
+validate-train:
+	@echo "Validating train data..."
+	$(BIN)/python -m data_generation.generate_train validate
 
-test:
-	@echo "Running tests..."
-	$(BIN)/pytest tests/ -v || true
+validate-decisions:
+	@echo "Validating decision data..."
+	$(BIN)/python -m data_generation.generate_decisions validate
+
+validate-all: validate-traffic validate-train validate-decisions
+	@echo "All validations complete"
+
+workflow: data-all ml-train validate-all
+	@echo "Complete workflow finished"
+	@echo "Ready to run: make simulate"
 
 clean:
 	@echo "Removing virtual environment..."
 	rm -rf $(VENV)
-	@echo "Virtual environment removed."
 
 clean-data:
-	@echo "Removing generated data and visualizations..."
-	rm -f 01_traffic/data/*.csv
-	rm -f 02_train/data/*.csv
-	rm -f 03_model/models/*.json
-	rm -f 03_model/models/*.h
-	rm -f 03_model/plots/*.png
-	rm -f 06_validation/plots/*.png
-	@echo "Data files removed."
+	@echo "Removing generated data..."
+	rm -rf data_generation/data/*.csv
+	rm -rf ml/models/*.pkl
 
 clean-all: clean clean-data
-	@echo "Complete cleanup finished."
+	@echo "Complete cleanup finished"
 
 .DEFAULT_GOAL := help

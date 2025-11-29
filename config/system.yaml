@@ -117,14 +117,14 @@ gates:
   closure_before_eta: 10.0
 vehicle_clearance:
   light:
-    min_time: 19.84
-    max_time: 72.39
-    avg_time: 40.4
+    min_time: 19.58
+    max_time: 79.29
+    avg_time: 42.43
   medium:
-    min_time: 22.29
-    max_time: 94.06
-    avg_time: 48.78
+    min_time: 20.86
+    max_time: 98.33
+    avg_time: 50.48
   heavy:
-    min_time: 27.54
-    max_time: 180.65
-    avg_time: 78.48
+    min_time: 29.54
+    max_time: 161.77
+    avg_time: 73.33
