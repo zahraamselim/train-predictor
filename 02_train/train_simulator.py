@@ -1,3 +1,5 @@
+"""Train simulation scenarios and approach data generation."""
+
 from typing import List
 import sys
 import os
@@ -27,7 +29,8 @@ class TrainSimulator:
         
         config = get_scale_config()
         train_config = config['train']
-        self.crossing_distance = crossing_distance if crossing_distance else train_config['crossing_distance']
+        self.crossing_distance = (crossing_distance if crossing_distance 
+                                 else train_config['crossing_distance'])
         self.train_length = train_config['train_length']
         self.buffer_distance = train_config['buffer_distance']
     
@@ -36,7 +39,7 @@ class TrainSimulator:
                          grade: float,
                          weather: str = 'clear',
                          target_speed: float = None,
-                         dt: float = 0.1) -> List[dict]:
+                         dt: float = None) -> List[dict]:
         """
         Simulate train approaching and clearing level crossing.
         
@@ -55,26 +58,31 @@ class TrainSimulator:
             target_speed = initial_speed
         target_speed_ms = target_speed / 3.6
         
+        # Adaptive timestep based on distance
+        if dt is None:
+            if self.crossing_distance > 5000:
+                dt = 1.0  # Larger timestep for long distances
+            elif self.crossing_distance > 1000:
+                dt = 0.5
+            else:
+                dt = 0.1
+        
         distance = self.crossing_distance
         time = 0.0
+        max_time = self.crossing_distance / (initial_speed / 3.6) * 3.0  # 3x expected time
         
         trajectory = []
         last_distance = distance
         stall_counter = 0
+        max_speed_ms = self.physics.train.max_speed / 3.6
         
         while distance > -(self.train_length + self.buffer_distance):
-            if distance > self.train_length:
-                crossing_status = 'approaching'
-            elif distance > 0:
-                crossing_status = 'entering'
-            elif distance > -self.train_length:
-                crossing_status = 'occupying'
-            else:
-                crossing_status = 'cleared'
+            crossing_status = self._get_crossing_status(distance)
             
-            accel = self.physics.calculate_acceleration(speed, grade, target_speed_ms, weather, braking=None)
+            accel = self.physics.calculate_acceleration(
+                speed, grade, target_speed_ms, weather, braking=None
+            )
             
-            max_speed_ms = self.physics.train.max_speed / 3.6
             if speed > max_speed_ms:
                 speed = max_speed_ms
                 accel = min(accel, 0)
@@ -85,17 +93,15 @@ class TrainSimulator:
             if abs(distance - last_distance) < 0.001 and distance > 0:
                 stall_counter += 1
                 if stall_counter > 50:
-                    print(f"Warning: Train stalled at {distance:.2f}m - insufficient power for grade {grade}%")
+                    print(f"Warning: Train stalled at {distance:.2f}m - "
+                          f"insufficient power for grade {grade}%")
                     break
             else:
                 stall_counter = 0
             
             last_distance = distance
             
-            if distance > 0:
-                eta = distance / speed if speed > 0.1 else 0
-            else:
-                eta = 0
+            eta = distance / speed if speed > 0.1 and distance > 0 else 0
             
             trajectory.append({
                 'time': round(time, 2),
@@ -113,8 +119,19 @@ class TrainSimulator:
             distance = distance_new
             time += dt
             
-            if time > 300:
-                print(f"Warning: Simulation timeout at {time}s")
+            if time > max_time:
+                print(f"Warning: Simulation timeout at {time}s (max: {max_time:.1f}s)")
                 break
         
         return trajectory
+    
+    def _get_crossing_status(self, distance: float) -> str:
+        """Determine crossing status based on train position."""
+        if distance > self.train_length:
+            return 'approaching'
+        elif distance > 0:
+            return 'entering'
+        elif distance > -self.train_length:
+            return 'occupying'
+        else:
+            return 'cleared'

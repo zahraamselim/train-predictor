@@ -22,16 +22,18 @@ class RailwayGate:
         
         self.pole_width = 12
         self.pole_height = 60
-        self.barrier_length = 120
+        self.barrier_length = 140
         self.barrier_width = 8
+        self.angle = 90
+        self.target_angle = 90
     
     def close(self):
         self.is_closed = True
-        self.target_angle = 90
+        self.target_angle = 0
     
     def open(self):
         self.is_closed = False
-        self.target_angle = 0
+        self.target_angle = 90
     
     def update(self):
         if self.angle < self.target_angle:
@@ -47,6 +49,8 @@ class RailwayGate:
         else:
             pole_x = self.x
         
+        pole_top_y = self.y - self.pole_height
+        
         base_rect = pygame.Rect(
             pole_x - self.pole_width,
             self.y - 5,
@@ -57,7 +61,7 @@ class RailwayGate:
         
         pole_rect = pygame.Rect(
             pole_x - self.pole_width // 2,
-            self.y - self.pole_height,
+            pole_top_y,
             self.pole_width,
             self.pole_height
         )
@@ -76,12 +80,13 @@ class RailwayGate:
         rotated_barrier = pygame.transform.rotate(barrier_surface, math.degrees(angle_rad))
         
         barrier_rect = rotated_barrier.get_rect()
+        
         if self.pivot == 'left':
-            barrier_rect.midleft = (pole_x, self.y - self.pole_height + 5)
+            barrier_rect.bottomleft = (pole_x, pole_top_y + self.barrier_width // 2)
         elif self.pivot == 'right':
-            barrier_rect.midright = (pole_x, self.y - self.pole_height + 5)
+            barrier_rect.bottomright = (pole_x, pole_top_y + self.barrier_width // 2)
         else:
-            barrier_rect.center = (pole_x, self.y - self.pole_height + 5)
+            barrier_rect.center = (pole_x, pole_top_y + self.barrier_width // 2)
         
         surface.blit(rotated_barrier, barrier_rect)
 

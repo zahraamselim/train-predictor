@@ -37,7 +37,7 @@ class CrossingSimulator:
         for crossing in crossings:
             cx, cy = crossing['x'], crossing['y']
             
-            gate = RailwayGate(cx, cy - 10, 'left')
+            gate = RailwayGate(cx, cy - 40, 'right')
             self.gates.append(gate)
             
             light = TrafficLight(cx - 65, cy - 80)
@@ -80,6 +80,24 @@ class CrossingSimulator:
             road_bounds,
             railway_bounds
         )
+        
+        intersections = [
+            {'x': road_bounds['left_road']['x'], 'y': road_bounds['top_road']['y']},
+            {'x': road_bounds['right_road']['x'], 'y': road_bounds['top_road']['y']},
+            {'x': road_bounds['left_road']['x'], 'y': road_bounds['bottom_road']['y']},
+            {'x': road_bounds['right_road']['x'], 'y': road_bounds['bottom_road']['y']}
+        ]
+        self.vehicle_manager.set_intersections(intersections)
+        
+        timer_info = []
+        for i, intersection in enumerate(intersections):
+            if i < len(self.timers):
+                timer_info.append({
+                    'intersection': intersection,
+                    'timer': self.timers[i]
+                })
+        self.vehicle_manager.set_timers(timer_info)
+        self.vehicle_manager.set_gate_objects(self.gates)
     
     def handle_events(self):
         for event in pygame.event.get():
@@ -88,6 +106,43 @@ class CrossingSimulator:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
+                elif event.key == pygame.K_SPACE:
+                    self._toggle_gates()
+    
+    def _toggle_gates(self):
+        if self.gates[0].is_closed:
+            self._open_gates()
+        else:
+            self._close_gates()
+    
+    def _close_gates(self):
+        for gate in self.gates:
+            gate.close()
+        for light in self.crossing_lights:
+            light.set_state('green')
+        for light in self.intersection_lights:
+            light.set_state('green')
+        for buzzer in self.buzzers:
+            buzzer.activate()
+        for timer in self.timers:
+            timer.set_time(30)
+        
+        gate_positions = self.map.get_crossing_positions()
+        self.vehicle_manager.set_closed_gates(gate_positions)
+    
+    def _open_gates(self):
+        for gate in self.gates:
+            gate.open()
+        for light in self.crossing_lights:
+            light.set_state('red')
+        for light in self.intersection_lights:
+            light.set_state('red')
+        for buzzer in self.buzzers:
+            buzzer.deactivate()
+        for timer in self.timers:
+            timer.stop()
+        
+        self.vehicle_manager.set_closed_gates([])
     
     def update(self):
         dt = self.clock.get_time() / 1000.0

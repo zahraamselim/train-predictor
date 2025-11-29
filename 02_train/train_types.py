@@ -1,19 +1,16 @@
-"""
-Train type definitions loaded from config.
-"""
+"""Train type definitions loaded from config."""
 
 from dataclasses import dataclass
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from config import load_config
 
 
 @dataclass
 class TrainType:
-    """Train characteristics."""
+    """Train characteristics for physics simulation."""
     name: str
     mass: float
     max_power: float
@@ -25,7 +22,7 @@ class TrainType:
 
 
 def _load_train_types():
-    """Load train types from config."""
+    """Load train types from system config."""
     config = load_config()
     types = {}
     

@@ -3,11 +3,11 @@ system:
   scale_factor: 33.33
 train:
   real_scale:
-    crossing_distance: 2000
+    crossing_distance: 3000
     sensor_positions:
-    - 400
-    - 250
-    - 100
+    - 2700.0
+    - 1620.0
+    - 810.0
     train_length: 150
     intersection_distances:
     - 300
@@ -15,11 +15,11 @@ train:
     - 1000
     buffer_distance: 300
   demo_scale:
-    crossing_distance: 60
+    crossing_distance: 300
     sensor_positions:
-    - 12
-    - 7.5
-    - 3
+    - 54
+    - 32.4
+    - 16.2
     train_length: 4.5
     intersection_distances:
     - 9
@@ -108,6 +108,7 @@ vehicle_types:
 ir_sensors:
   sensor_constant: 10000
   saturation_distance: 0.1
+  detection_threshold: 5.0
   noise_factors:
     clear: 0.05
     rain: 0.15
@@ -116,14 +117,14 @@ gates:
   closure_before_eta: 10.0
 vehicle_clearance:
   light:
-    min_time: 0.82
-    max_time: 2.48
-    avg_time: 1.51
+    min_time: 18.68
+    max_time: 77.24
+    avg_time: 41.32
   medium:
-    min_time: 0.99
-    max_time: 3.72
-    avg_time: 1.84
+    min_time: 20.42
+    max_time: 102.69
+    avg_time: 47.23
   heavy:
-    min_time: 1.01
-    max_time: 5.69
-    avg_time: 2.8
+    min_time: 28.61
+    max_time: 180.55
+    avg_time: 80.38

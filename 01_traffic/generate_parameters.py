@@ -1,3 +1,5 @@
+"""Generate traffic parameters for different road intersection distances."""
+
 import numpy as np
 import pandas as pd
 import sys
@@ -13,14 +15,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import get_scale_config, update_vehicle_clearance
 
 
-def generate_traffic_parameters(output_file: str = 'traffic_parameters.csv') -> None:
+def generate_traffic_parameters(output_file: str = None) -> None:
     """
     Generate traffic parameters for different road intersection distances.
     Reads intersection distances from system config and writes clearance times back.
     
     Args:
-        output_file: CSV filename for output
+        output_file: CSV filename for output (uses default module path if None)
     """
+    if output_file is None:
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(module_dir, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        output_file = os.path.join(data_dir, 'traffic_parameters.csv')
+    
     config = get_scale_config()
     traffic_config = config['traffic']
     scale_mode = config['scale_mode']
@@ -42,12 +50,13 @@ def generate_traffic_parameters(output_file: str = 'traffic_parameters.csv') -> 
             
             if density not in clearance_by_density:
                 clearance_by_density[density] = {'times': []}
+            
             clearance_by_density[density]['times'].extend(
                 [v['clearance_time'] for v in analysis['vehicles']]
             )
             
             for vehicle in analysis['vehicles']:
-                data_point = {
+                all_data.append({
                     'intersection_distance': distance,
                     'traffic_density': density,
                     'vehicle_type': vehicle['vehicle_type'],
@@ -57,8 +66,7 @@ def generate_traffic_parameters(output_file: str = 'traffic_parameters.csv') -> 
                     'stopping_distance': vehicle['stopping_distance'],
                     'clearance_time': vehicle['clearance_time'],
                     'can_stop': vehicle['can_stop']
-                }
-                all_data.append(data_point)
+                })
     
     df = pd.DataFrame(all_data)
     df.to_csv(output_file, index=False)
@@ -75,7 +83,7 @@ def generate_traffic_parameters(output_file: str = 'traffic_parameters.csv') -> 
         print(f"{density}: min={min_time}s, avg={avg_time}s, max={max_time}s")
         update_vehicle_clearance(density, min_time, max_time, avg_time)
     
-    print(f"Updated system_config.yaml with clearance times")
+    print("Updated system_config.yaml with clearance times")
 
 
 def calculate_gate_timing(train_eta: float, 
@@ -128,7 +136,9 @@ def analyze_intersection_scenarios() -> None:
         for distance in intersection_distances:
             timing = calculate_gate_timing(eta, distance)
             
-            print(f"  {distance}{unit}: gate={timing['gate_closure_time']:.1f}s, notify={timing['notification_time']:.1f}s")
+            print(f"  {distance}{unit}: "
+                  f"gate={timing['gate_closure_time']:.1f}s, "
+                  f"notify={timing['notification_time']:.1f}s")
 
 
 if __name__ == "__main__":
@@ -136,15 +146,15 @@ if __name__ == "__main__":
         command = sys.argv[1].lower()
         
         if command == 'generate':
-            generate_traffic_parameters('02_traffic_parameters/data/traffic_parameters.csv')
+            generate_traffic_parameters()
         elif command == 'analyze':
             analyze_intersection_scenarios()
         else:
             print(f"Unknown command: {command}")
-            print("Usage: python -m 02_traffic_parameters.generate_parameters [generate|analyze]")
+            print("Usage: python -m 01_traffic.generate_parameters [generate|analyze]")
             sys.exit(1)
     else:
         print("Generating traffic parameters...")
-        generate_traffic_parameters('02_traffic_parameters/data/traffic_parameters.csv')
+        generate_traffic_parameters()
         print("\nAnalyzing scenarios...")
         analyze_intersection_scenarios()

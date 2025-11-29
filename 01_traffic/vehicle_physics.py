@@ -1,3 +1,5 @@
+"""Vehicle motion and stopping distance calculations."""
+
 try:
     from .vehicle_types import VehicleType
 except ImportError:
@@ -5,7 +7,7 @@ except ImportError:
 
 
 class VehiclePhysics:
-    """Simulates vehicle motion and stopping distances."""
+    """Simulates vehicle motion using fundamental physics."""
     
     def __init__(self, vehicle_type: VehicleType):
         self.vehicle = vehicle_type
@@ -20,7 +22,7 @@ class VehiclePhysics:
             reaction_time: Driver reaction time in seconds (uses vehicle default if None)
         
         Returns:
-            Dictionary with distance components
+            Dictionary with distance components (m)
         """
         if reaction_time is None:
             reaction_time = self.vehicle.reaction_time
@@ -33,12 +35,10 @@ class VehiclePhysics:
         else:
             braking_distance = 0
         
-        total_distance = reaction_distance + braking_distance
-        
         return {
             'reaction_distance': round(reaction_distance, 2),
             'braking_distance': round(braking_distance, 2),
-            'total_distance': round(total_distance, 2),
+            'total_distance': round(reaction_distance + braking_distance, 2),
             'reaction_time': reaction_time
         }
     
@@ -51,7 +51,7 @@ class VehiclePhysics:
         Args:
             distance: Distance to cover in meters
             initial_speed: Starting speed in km/h
-            accelerate: Whether vehicle accelerates (True) or maintains speed (False)
+            accelerate: Whether vehicle accelerates from stop
         
         Returns:
             Time in seconds
@@ -65,15 +65,15 @@ class VehiclePhysics:
         max_speed_ms = self.vehicle.max_speed / 3.6
         accel = self.vehicle.max_accel
         
-        time_to_max_speed = (max_speed_ms - speed_ms) / accel
-        distance_to_max_speed = speed_ms * time_to_max_speed + 0.5 * accel * time_to_max_speed**2
+        time_to_max = (max_speed_ms - speed_ms) / accel
+        dist_to_max = speed_ms * time_to_max + 0.5 * accel * time_to_max**2
         
-        if distance <= distance_to_max_speed:
+        if distance <= dist_to_max:
             time = (-speed_ms + (speed_ms**2 + 2 * accel * distance)**0.5) / accel
         else:
-            remaining_distance = distance - distance_to_max_speed
-            time_at_max_speed = remaining_distance / max_speed_ms
-            time = time_to_max_speed + time_at_max_speed
+            remaining_dist = distance - dist_to_max
+            time_at_max = remaining_dist / max_speed_ms
+            time = time_to_max + time_at_max
         
         return round(time, 2)
     
@@ -95,4 +95,8 @@ class VehiclePhysics:
         if include_vehicle_length:
             total_distance += self.vehicle.length
         
-        return self.calculate_time_to_traverse(total_distance, initial_speed, accelerate=False)
+        return self.calculate_time_to_traverse(
+            total_distance, 
+            initial_speed, 
+            accelerate=False
+        )

@@ -1,19 +1,16 @@
-"""
-Vehicle type definitions loaded from config.
-"""
+"""Vehicle type definitions loaded from config."""
 
 from dataclasses import dataclass
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from config import load_config
 
 
 @dataclass
 class VehicleType:
-    """Vehicle characteristics."""
+    """Vehicle characteristics for physics simulation."""
     name: str
     mass: float
     max_speed: float
@@ -24,7 +21,7 @@ class VehicleType:
 
 
 def _load_vehicle_types():
-    """Load vehicle types from config."""
+    """Load vehicle types from system config."""
     config = load_config()
     types = {}
     

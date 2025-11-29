@@ -1,3 +1,5 @@
+"""Train motion simulation using fundamental physics principles."""
+
 try:
     from .train_types import TrainType
 except ImportError:
@@ -5,7 +7,7 @@ except ImportError:
 
 
 class TrainPhysics:
-    """Simulates train motion using fundamental physics principles."""
+    """Simulates train motion using Newton's laws and railway engineering principles."""
     
     def __init__(self, train_type: TrainType):
         self.train = train_type
@@ -32,7 +34,8 @@ class TrainPhysics:
         
         return min(force_from_power, adhesion_limit)
     
-    def calculate_resistance(self, velocity: float, grade: float, weather: str = 'clear') -> float:
+    def calculate_resistance(self, velocity: float, grade: float, 
+                            weather: str = 'clear') -> float:
         """
         Calculate total resistance forces opposing motion.
         
@@ -53,13 +56,11 @@ class TrainPhysics:
             rolling_coef *= 1.10
         
         rolling_force = rolling_coef * mass_kg * self.g
-        air_force = 0.5 * self.air_density * self.train.drag_coefficient * \
-                    self.train.frontal_area * velocity**2
+        air_force = (0.5 * self.air_density * self.train.drag_coefficient * 
+                    self.train.frontal_area * velocity**2)
         grade_force = mass_kg * self.g * (grade / 100)
         
-        total_resistance = rolling_force + air_force + grade_force
-        
-        return total_resistance
+        return rolling_force + air_force + grade_force
     
     def calculate_acceleration(self, velocity: float, grade: float, 
                               target_speed: float = None,

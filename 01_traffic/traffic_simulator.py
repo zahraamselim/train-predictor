@@ -1,3 +1,5 @@
+"""Traffic scenario simulation at road intersection before level crossing."""
+
 import numpy as np
 from typing import List, Dict
 import sys
@@ -20,9 +22,20 @@ class TrafficSimulator:
     def __init__(self, intersection_distance: float):
         """
         Args:
-            intersection_distance: Distance from road intersection to train crossing
+            intersection_distance: Distance from road intersection to train crossing (m)
         """
         self.intersection_distance = intersection_distance
+        self._default_vehicle_mix = {
+            'car': 0.60, 
+            'suv': 0.25, 
+            'truck': 0.10, 
+            'motorcycle': 0.05
+        }
+        self._density_configs = {
+            'light': {'num_vehicles': 3, 'speed_range': (45, 60)},
+            'medium': {'num_vehicles': 8, 'speed_range': (35, 55)},
+            'heavy': {'num_vehicles': 15, 'speed_range': (20, 40)}
+        }
     
     def simulate_single_vehicle(self, vehicle_type: str, 
                                 initial_speed: float,
@@ -33,28 +46,21 @@ class TrafficSimulator:
         Args:
             vehicle_type: 'car', 'suv', 'truck', or 'motorcycle'
             initial_speed: Speed vehicle would travel at (km/h)
-            at_intersection: True if stopped at intersection, False if already moving
+            at_intersection: True if stopped at intersection, False if moving
         
         Returns:
-            Dictionary with timing parameters
+            Dictionary with timing and safety parameters
         """
         physics = VehiclePhysics(VEHICLE_TYPES[vehicle_type])
         
-        if at_intersection:
-            time_to_crossing = physics.calculate_time_to_traverse(
-                self.intersection_distance,
-                initial_speed,
-                accelerate=True
-            )
-        else:
-            time_to_crossing = physics.calculate_time_to_traverse(
-                self.intersection_distance,
-                initial_speed,
-                accelerate=False
-            )
+        time_to_crossing = physics.calculate_time_to_traverse(
+            self.intersection_distance,
+            initial_speed,
+            accelerate=at_intersection
+        )
         
         stopping = physics.calculate_stopping_distance(initial_speed)
-        can_stop_before_crossing = stopping['total_distance'] < self.intersection_distance
+        can_stop = stopping['total_distance'] < self.intersection_distance
         
         clearance_time = physics.calculate_clearance_time(
             self.intersection_distance,
@@ -69,7 +75,7 @@ class TrafficSimulator:
             'stopping_distance': stopping['total_distance'],
             'reaction_distance': stopping['reaction_distance'],
             'braking_distance': stopping['braking_distance'],
-            'can_stop': can_stop_before_crossing,
+            'can_stop': can_stop,
             'clearance_time': clearance_time,
             'at_intersection': at_intersection,
             'intersection_distance': self.intersection_distance
@@ -90,7 +96,7 @@ class TrafficSimulator:
             List of vehicle simulation results
         """
         if vehicle_mix is None:
-            vehicle_mix = {'car': 0.60, 'suv': 0.25, 'truck': 0.10, 'motorcycle': 0.05}
+            vehicle_mix = self._default_vehicle_mix
         
         vehicle_types = list(vehicle_mix.keys())
         probabilities = list(vehicle_mix.values())
@@ -147,13 +153,7 @@ class TrafficSimulator:
         Returns:
             Dictionary with density analysis
         """
-        density_configs = {
-            'light': {'num_vehicles': 3, 'speed_range': (45, 60)},
-            'medium': {'num_vehicles': 8, 'speed_range': (35, 55)},
-            'heavy': {'num_vehicles': 15, 'speed_range': (20, 40)}
-        }
-        
-        config = density_configs.get(density, density_configs['medium'])
+        config = self._density_configs.get(density, self._density_configs['medium'])
         
         vehicles = self.simulate_vehicle_queue(
             num_vehicles=config['num_vehicles'],

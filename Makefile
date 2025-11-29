@@ -1,11 +1,13 @@
 .PHONY: help setup install clean clean-data clean-all \
-	train-demo train-small train-full \
 	traffic-generate traffic-analyze \
-	validate-train validate-traffic \
-	visualize-train-demo visualize-train-small visualize-train-full \
-	visualize-traffic simulate-train \
+	sensors-calculate sensors-apply \
+	train-demo train-small train-full \
+	model-train-demo model-train-small model-train-full \
+	validate-traffic validate-train validate-model validate-all \
+	workflow-demo workflow-full \
+	simulate \
 	scale-demo scale-real \
-	lint format test docs
+	lint format test
 
 PYTHON = python3
 VENV = .venv
@@ -20,33 +22,40 @@ help:
 	@echo "  make scale-demo          Set scale to demo mode (75x75cm board)"
 	@echo "  make scale-real          Set scale to real mode (2000m distances)"
 	@echo ""
-	@echo "Data Generation:"
+	@echo "CORRECT WORKFLOW (run in this order):"
+	@echo "  1. make traffic-generate      Generate traffic clearance data"
+	@echo "  2. make sensors-calculate     Calculate sensor positions (view only)"
+	@echo "  3. make sensors-apply         Apply sensor positions to config"
+	@echo "  4. make train-[demo|small|full]  Generate train dataset"
+	@echo "  5. make model-train-[demo|small|full]  Train ML models"
+	@echo "  6. make validate-all          Validate all outputs"
+	@echo ""
+	@echo "Quick Commands:"
+	@echo "  make workflow-demo       Run full workflow with demo dataset"
+	@echo "  make workflow-full       Run full workflow with full dataset"
+	@echo ""
+	@echo "Individual Steps:"
+	@echo "  make traffic-generate    Generate traffic parameters"
+	@echo "  make traffic-analyze     Analyze gate timing scenarios"
+	@echo "  make sensors-calculate   Calculate optimal sensor positions"
+	@echo "  make sensors-apply       Apply calculated positions to config"
+	@echo ""
 	@echo "  make train-demo          Generate demo train dataset (10 scenarios)"
 	@echo "  make train-small         Generate small train dataset (50 scenarios)"
 	@echo "  make train-full          Generate full train dataset (100 scenarios)"
-	@echo "  make train-all           Generate all train datasets"
 	@echo ""
-	@echo "  make traffic-generate    Generate traffic parameters from config"
-	@echo "  make traffic-analyze     Analyze gate timing and notification scenarios"
+	@echo "  make model-train-demo    Train models on demo dataset"
+	@echo "  make model-train-small   Train models on small dataset"
+	@echo "  make model-train-full    Train models on full dataset"
 	@echo ""
-	@echo "Validation & Analysis:"
-	@echo "  make validate-train      Validate train dataset integrity"
-	@echo "  make validate-traffic    Validate traffic dataset integrity"
-	@echo ""
-	@echo "Visualization:"
-	@echo "  make visualize-train-demo    Visualize demo train dataset"
-	@echo "  make visualize-train-small   Visualize small train dataset"
-	@echo "  make visualize-train-full    Visualize full train dataset"
-	@echo "  make visualize-traffic       Visualize traffic parameters"
-	@echo "  make visualize-all           Generate all visualizations"
+	@echo "Validation Commands:"
+	@echo "  make validate-traffic    Validate traffic module output"
+	@echo "  make validate-train      Validate train dataset output"
+	@echo "  make validate-model      Validate model training output"
+	@echo "  make validate-all        Run all validations"
 	@echo ""
 	@echo "Simulation:"
-	@echo "  make simulate-train      Run live train simulation (pygame)"
-	@echo ""
-	@echo "Code Quality:"
-	@echo "  make lint                Run code linter (pylint)"
-	@echo "  make format              Format code with black"
-	@echo "  make test                Run tests (if available)"
+	@echo "  make simulate            Run crossing simulation (pygame)"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean               Remove virtual environment"
@@ -77,75 +86,79 @@ scale-real:
 	$(BIN)/python -m config.utils real
 	@echo "Scale set to real (m)"
 
-train-demo:
-	@echo "Generating demo train dataset (10 scenarios)..."
-	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -m 01_train_dataset.generate_dataset demo
-
-train-small:
-	@echo "Generating small train dataset (50 scenarios)..."
-	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -m 01_train_dataset.generate_dataset small
-
-train-full:
-	@echo "Generating full train dataset (100 scenarios)..."
-	@mkdir -p 01_train_dataset/data
-	$(BIN)/python -m 01_train_dataset.generate_dataset full
-
-train-all: train-demo train-small train-full
-	@echo "All train datasets generated."
-
 traffic-generate:
 	@echo "Generating traffic parameters..."
-	@mkdir -p 02_traffic_parameters/data
-	$(BIN)/python -m 02_traffic_parameters.generate_parameters generate
+	$(BIN)/python -m 01_traffic.generate_parameters generate
 
 traffic-analyze:
 	@echo "Analyzing intersection timing scenarios..."
-	$(BIN)/python -m 02_traffic_parameters.generate_parameters analyze
+	$(BIN)/python -m 01_traffic.generate_parameters analyze
 
-validate-train:
-	@echo "Validating train datasets..."
-	$(BIN)/python -m 06_validation.validate_data train
+sensors-calculate:
+	@echo "Calculating optimal sensor positions..."
+	$(BIN)/python -m 01_traffic.calculate_sensor_positions
+
+sensors-apply:
+	@echo "Applying sensor positions to config..."
+	$(BIN)/python -m 01_traffic.calculate_sensor_positions --apply
+
+train-demo:
+	@echo "Generating demo train dataset (10 scenarios)..."
+	$(BIN)/python -m 02_train.generate_dataset demo
+
+train-small:
+	@echo "Generating small train dataset (50 scenarios)..."
+	$(BIN)/python -m 02_train.generate_dataset small
+
+train-full:
+	@echo "Generating full train dataset (100 scenarios)..."
+	$(BIN)/python -m 02_train.generate_dataset full
+
+model-train-demo:
+	@echo "Training models on demo dataset..."
+	$(BIN)/python -m 03_model.train_model 02_train/data/train_data_demo.csv
+
+model-train-small:
+	@echo "Training models on small dataset..."
+	$(BIN)/python -m 03_model.train_model 02_train/data/train_data_small.csv
+
+model-train-full:
+	@echo "Training models on full dataset..."
+	$(BIN)/python -m 03_model.train_model
 
 validate-traffic:
-	@echo "Validating traffic datasets..."
-	$(BIN)/python -m 06_validation.validate_data traffic
+	@echo "Validating traffic module..."
+	$(BIN)/python -m 06_validation.validate_traffic
 
-visualize-train-demo:
-	@echo "Visualizing demo train dataset..."
-	@mkdir -p 06_validation/plots
-	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data_demo.csv
+validate-train:
+	@echo "Validating train dataset module..."
+	$(BIN)/python -m 06_validation.validate_train
 
-visualize-train-small:
-	@echo "Visualizing small train dataset..."
-	@mkdir -p 06_validation/plots
-	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data_small.csv
+validate-model:
+	@echo "Validating model training module..."
+	$(BIN)/python -m 06_validation.validate_model
 
-visualize-train-full:
-	@echo "Visualizing full train dataset..."
-	@mkdir -p 06_validation/plots
-	$(BIN)/python -m 06_validation.visualize_dataset 01_train_dataset/data/train_data.csv
+validate-all:
+	@echo "Running all validations..."
+	$(BIN)/python -m 06_validation.validate_all
 
-visualize-traffic:
-	@echo "Visualizing traffic parameters..."
-	@mkdir -p 06_validation/plots
-	$(BIN)/python -m 06_validation.visualize_traffic 02_traffic_parameters/data/traffic_parameters.csv
+workflow-demo: traffic-generate sensors-apply train-demo model-train-demo validate-all
+	@echo "Demo workflow complete!"
 
-visualize-all: visualize-train-demo visualize-train-small visualize-train-full visualize-traffic
-	@echo "All visualizations generated."
+workflow-full: traffic-generate sensors-apply train-full model-train-full validate-all
+	@echo "Full workflow complete!"
 
-simulate-train:
-	@echo "Running live train simulation..."
-	$(BIN)/python -m 05_simulation.train_visualization
+simulate:
+	@echo "Running crossing simulation..."
+	$(BIN)/python -m 05_simulation.simulator
 
 lint:
 	@echo "Running code linter..."
-	$(BIN)/pylint 01_train_dataset/ 02_traffic_parameters/ config/ || true
+	$(BIN)/pylint 01_traffic/ 02_train/ 03_model/ config/ 06_validation/ || true
 
 format:
 	@echo "Formatting code with black..."
-	$(BIN)/black 01_train_dataset/ 02_traffic_parameters/ config/
+	$(BIN)/black 01_traffic/ 02_train/ 03_model/ config/ 06_validation/
 
 test:
 	@echo "Running tests..."
@@ -158,8 +171,11 @@ clean:
 
 clean-data:
 	@echo "Removing generated data and visualizations..."
-	rm -f 01_train_dataset/data/*.csv
-	rm -f 02_traffic_parameters/data/*.csv
+	rm -f 01_traffic/data/*.csv
+	rm -f 02_train/data/*.csv
+	rm -f 03_model/models/*.json
+	rm -f 03_model/models/*.h
+	rm -f 03_model/plots/*.png
 	rm -f 06_validation/plots/*.png
 	@echo "Data files removed."
 
