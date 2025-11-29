@@ -88,19 +88,57 @@ scale-real:
 
 traffic-generate:
 	@echo "Generating traffic parameters..."
-	$(BIN)/python -m 01_traffic.generate_parameters generate
+	$(BIN)/python -m 01_traffic.generate
 
-traffic-analyze:
-	@echo "Analyzing intersection timing scenarios..."
-	$(BIN)/python -m 01_traffic.generate_parameters analyze
+traffic-validate:
+	@echo "Validating traffic module..."
+	$(BIN)/python -m 01_traffic.generate validate
+
+traffic-clean:
+	@echo "Removing traffic data..."
+	rm -f 01_traffic/data/*.csv
 
 sensors-calculate:
-	@echo "Calculating optimal sensor positions..."
-	$(BIN)/python -m 01_traffic.calculate_sensor_positions
+	@echo "Calculating sensor positions..."
+	$(BIN)/python -m 02_sensors.positioning calculate
 
 sensors-apply:
 	@echo "Applying sensor positions to config..."
-	$(BIN)/python -m 01_traffic.calculate_sensor_positions --apply
+	$(BIN)/python -m 02_sensors.positioning apply
+
+sensors-validate:
+	@echo "Validating sensor configuration..."
+	$(BIN)/python -m 02_sensors.positioning validate
+
+train-generate:
+	@echo "Generating train dataset (100 scenarios)..."
+	$(BIN)/python -m 03_train.simulator
+
+train-generate-demo:
+	@echo "Generating demo dataset (10 scenarios)..."
+	$(BIN)/python -m 03_train.simulator demo
+
+train-generate-small:
+	@echo "Generating small dataset (50 scenarios)..."
+	$(BIN)/python -m 03_train.simulator small
+
+train-validate:
+	@echo "Validating train module..."
+	$(BIN)/python -m 03_train.simulator validate
+
+prediction-validate:
+	@echo "Validating prediction module..."
+	$(BIN)/python -m 04_prediction.validate
+
+integration-validate:
+	@echo "Validating integration module..."
+	$(BIN)/python -m 05_integration.validate
+
+validate-all: traffic-validate sensors-validate train-validate prediction-validate integration-validate
+	@echo "ALL MODULES VALIDATED SUCCESSFULLY"
+
+workflow-full: traffic-generate sensors-apply train-generate validate-all
+	@echo "COMPLETE SYSTEM READY"
 
 train-demo:
 	@echo "Generating demo train dataset (10 scenarios)..."
@@ -141,12 +179,6 @@ validate-model:
 validate-all:
 	@echo "Running all validations..."
 	$(BIN)/python -m 06_validation.validate_all
-
-workflow-demo: traffic-generate sensors-apply train-demo model-train-demo validate-all
-	@echo "Demo workflow complete!"
-
-workflow-full: traffic-generate sensors-apply train-full model-train-full validate-all
-	@echo "Full workflow complete!"
 
 simulate:
 	@echo "Running crossing simulation..."
