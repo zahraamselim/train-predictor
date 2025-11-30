@@ -2,7 +2,7 @@ import pygame
 
 
 class LevelCrossingMap:
-    def __init__(self, width=1400, height=800):
+    def __init__(self, width=1600, height=1000):
         self.width = width
         self.height = height
         
@@ -201,21 +201,29 @@ class LevelCrossingMap:
             {'x': right_road_x, 'y': railway_y}
         ]
     
-    def get_road_bounds(self):
+    def get_intersection_positions(self):
         top_road_y = self.height // 2 - self.horizontal_road_spacing
         bottom_road_y = self.height // 2 + self.horizontal_road_spacing
         left_road_x = self.width // 2 - self.vertical_road_spacing
         right_road_x = self.width // 2 + self.vertical_road_spacing
         
-        return {
-            'top_road': {'y': top_road_y, 'width': self.road_width},
-            'bottom_road': {'y': bottom_road_y, 'width': self.road_width},
-            'left_road': {'x': left_road_x, 'width': self.road_width},
-            'right_road': {'x': right_road_x, 'width': self.road_width}
-        }
+        return [
+            {'x': left_road_x, 'y': top_road_y},
+            {'x': right_road_x, 'y': top_road_y},
+            {'x': left_road_x, 'y': bottom_road_y},
+            {'x': right_road_x, 'y': bottom_road_y}
+        ]
     
-    def get_railway_bounds(self):
-        return {
-            'y': self.height // 2,
-            'width': self.track_width
-        }
+    def get_spawn_points(self):
+        margin = 50
+        top_road_y = self.height // 2 - self.horizontal_road_spacing
+        bottom_road_y = self.height // 2 + self.horizontal_road_spacing
+        left_road_x = self.width // 2 - self.vertical_road_spacing
+        right_road_x = self.width // 2 + self.vertical_road_spacing
+        
+        return [
+            {'x': self.width + margin, 'y': top_road_y, 'direction': 'west'},
+            {'x': self.width + margin, 'y': bottom_road_y, 'direction': 'west'},
+            {'x': left_road_x, 'y': -margin, 'direction': 'south'},
+            {'x': right_road_x, 'y': -margin, 'direction': 'south'}
+        ]
