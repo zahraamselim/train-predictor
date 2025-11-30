@@ -221,9 +221,9 @@ class LevelCrossingMap:
         left_road_x = self.width // 2 - self.vertical_road_spacing
         right_road_x = self.width // 2 + self.vertical_road_spacing
         
-        return [
-            {'x': self.width + margin, 'y': top_road_y, 'direction': 'west'},
-            {'x': self.width + margin, 'y': bottom_road_y, 'direction': 'west'},
-            {'x': left_road_x, 'y': -margin, 'direction': 'south'},
-            {'x': right_road_x, 'y': -margin, 'direction': 'south'}
-        ]
+        return {
+            'top_left': {'x': left_road_x, 'y': -margin, 'direction': 'south'},
+            'top_right': {'x': right_road_x, 'y': -margin, 'direction': 'south'},
+            'right_top': {'x': self.width + margin, 'y': top_road_y, 'direction': 'west'},
+            'right_bottom': {'x': self.width + margin, 'y': bottom_road_y, 'direction': 'west'}
+        }

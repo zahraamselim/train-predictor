@@ -1,257 +1,322 @@
 # Arduino Hardware Implementation
 
-Hardware deployment for level crossing notification system.
+Complete standalone system that runs on battery power with embedded ML model.
 
-## Components
-
-### Railway Sensors (3x)
-
-- IR Obstacle Avoidance Sensors
-- Purpose: Detect train at multiple points before crossing
-- Positions: Furthest (2700m), Middle (1620m), Nearest (810m)
-- Pins: D2, D3, D4
-
-### Crossing Equipment
-
-- Servo Motor: Gate control (0° closed, 90° open)
-- TM1637 Display: Countdown timer (MM:SS format)
-- Red LED: Warning light when gates closed
-- Green LED: Safe to cross indicator
-- Pins: D5 (servo), D11/D12 (display), D6 (red), D7 (green)
-
-### Intersection Equipment
-
-- Red LED: Stop signal for vehicles
-- Green LED: Go signal for vehicles
-- Buzzer: Warning sound
-- Pins: D8 (red), D9 (green), D10 (buzzer)
-
-## Wiring Diagram
+## Files
 
 ```
-Arduino Uno:
-
-Railway Sensors:
-  Sensor 0 (Furthest) → D2
-  Sensor 1 (Middle)   → D3
-  Sensor 2 (Nearest)  → D4
-  All VCC → 5V
-  All GND → GND
-
-Crossing:
-  Servo Signal → D5
-  Servo VCC → 5V (or external if high torque)
-  Servo GND → GND
-
-  TM1637 CLK → D11
-  TM1637 DIO → D12
-  TM1637 VCC → 5V
-  TM1637 GND → GND
-
-  Red LED Anode → D6 (with 220Ω resistor)
-  Red LED Cathode → GND
-
-  Green LED Anode → D7 (with 220Ω resistor)
-  Green LED Cathode → GND
-
-Intersection:
-  Red LED Anode → D8 (with 220Ω resistor)
-  Red LED Cathode → GND
-
-  Green LED Anode → D9 (with 220Ω resistor)
-  Green LED Cathode → GND
-
-  Buzzer Positive → D10 (with 100Ω resistor)
-  Buzzer Negative → GND
+arduino/
+├── sketch.ino                    # Main Arduino code
+├── export_model_to_arduino.py    # Exports trained ML model
+└── README.md                     # This file
 ```
 
-## Libraries Required
+## Quick Start
 
-Install via Arduino IDE Library Manager:
+### 1. Train ML Model
 
-- Servo (built-in)
-- TM1637Display by Avishay Orpaz
-
-## Upload Instructions
-
-1. Install Arduino IDE
-2. Install required libraries
-3. Connect Arduino via USB
-4. Select Board: Arduino Uno
-5. Select correct COM port
-6. Open `sketch.ino`
-7. Click Upload
-
-## System Operation
-
-### Initial State
-
-- Gates: Open (90°)
-- Crossing lights: Green
-- Intersection lights: Green
-- Buzzer: Off
-- Display: Blank
-
-### Train Detected
-
-1. Sensors trigger sequentially (0 → 1 → 2)
-2. System calculates train speed
-3. System predicts ETA
-
-### Gates Close (ETA < 15s)
-
-1. Gates lower to 0°
-2. All lights turn red
-3. Buzzer activates (0.5s intervals)
-4. Display shows countdown
-
-### Train Passes
-
-1. Countdown reaches 0
-2. System waits 5 seconds
-3. Gates open to 90°
-4. All lights turn green
-5. Buzzer deactivates
-6. Display clears
-7. System resets for next train
-
-## ETA Calculation
-
-Simple constant speed formula (implemented on Arduino):
-
-```cpp
-speed = distance_1_to_2 / time_1_to_2  // m/s
-ETA = remaining_distance / speed       // seconds
+```bash
+make data-train    # Generate training data
+make ml-train      # Train ETA predictor
 ```
 
-Where:
+### 2. Export Model to Arduino
 
-- distance_1_to_2 = 810m (sensor 1 to sensor 2)
-- time_1_to_2 = measured time between sensor triggers
-- remaining_distance = 810m (sensor 2 to crossing)
+```bash
+make ml-export
+```
+
+This creates `arduino/eta_model.h` with the ML prediction function.
+
+### 3. Update Arduino Sketch
+
+Open `sketch.ino` and replace the `predictETA()` function with the contents of `eta_model.h`.
+
+### 4. Upload to Arduino
+
+- Open Arduino IDE
+- Install library: TM1637Display
+- Select Board: Arduino Uno
+- Upload sketch
+
+## Hardware Setup
+
+### Components (from Wokwi diagram)
+
+**Railway Detection:**
+
+- 3× PIR Motion Sensors (or IR obstacle sensors)
+- Connected to D2, D3, D4
+
+**Crossing Control:**
+
+- 1× Servo Motor → D5
+- 1× TM1637 Display → D11 (CLK), D12 (DIO)
+- 1× Red LED → D6 (via 220Ω resistor)
+- 1× Green LED → D7 (via 220Ω resistor)
+
+**Intersection Warning:**
+
+- 1× Red LED → D8 (via 220Ω resistor)
+- 1× Green LED → D9 (via 220Ω resistor)
+- 1× Buzzer → D10 (via 100Ω resistor)
+
+### Wiring Diagram
+
+```
+Arduino Uno
+├── D2 ← PIR Sensor 0 (Furthest)
+├── D3 ← PIR Sensor 1 (Middle)
+├── D4 ← PIR Sensor 2 (Nearest)
+├── D5 → Servo Signal
+├── D6 → Crossing Red LED → 220Ω → GND
+├── D7 → Crossing Green LED → 220Ω → GND
+├── D8 → Intersection Red LED → 220Ω → GND
+├── D9 → Intersection Green LED → 220Ω → GND
+├── D10 → Buzzer → 100Ω → GND
+├── D11 → TM1637 CLK
+├── D12 → TM1637 DIO
+├── 5V → All VCC pins
+└── GND → All GND pins
+```
+
+## How It Works
+
+### 1. Train Detection
+
+```
+Sensor 0 (54cm) ──→ Sensor 1 (32.4cm) ──→ Sensor 2 (16.2cm) ──→ Crossing
+```
+
+Sensors trigger sequentially as train approaches.
+
+### 2. ETA Calculation
+
+**Features extracted:**
+
+- Time between sensor pairs
+- Speed at each segment
+- Acceleration/deceleration
+- Distance remaining
+
+**ML Model predicts:**
+
+- Accurate ETA accounting for train dynamics
+- More precise than simple physics
+
+### 3. Gate Control
+
+```
+ETA > 15s → Notify intersections (red light, buzzer)
+ETA ≤ 10s → Close gates, start countdown
+ETA = 0s  → Wait 5 seconds, open gates
+```
 
 ## Testing
 
-### Sensor Test
+### Wokwi Simulation
 
-1. Wave hand in front of each sensor
-2. Serial monitor should show: "Sensor X triggered"
-3. All 3 sensors must trigger in order
+1. Go to https://wokwi.com
+2. Create new Arduino Uno project
+3. Add components and wire as shown
+4. Upload sketch
+5. Click sensors to simulate train
 
-### Gate Test
+### Physical Hardware
 
-1. Manually trigger all 3 sensors quickly
-2. If ETA < 15s, gate should close
-3. After countdown, gate should reopen
-
-### Display Test
-
-1. Display should show MM:SS format
-2. Countdown should decrement every second
-3. Display should clear when gates open
-
-## Troubleshooting
-
-**Sensors not triggering:**
-
-- Check wiring (VCC, GND, Signal)
-- Verify sensor range (usually 2-30cm)
-- Ensure sensors face correct direction
-
-**Gate not moving:**
-
-- Check servo power supply
-- Verify servo signal wire on D5
-- Test servo separately with sweep example
-
-**Display not working:**
-
-- Verify CLK on D11, DIO on D12
-- Check library installation
-- Test brightness setting
-
-**LEDs not lighting:**
-
-- Check resistor values (220Ω recommended)
-- Verify correct polarity (long leg = anode)
-- Test LEDs with simple blink sketch
+1. Power Arduino via USB or battery
+2. Trigger sensors manually or with object
+3. Observe gate, lights, buzzer, countdown
+4. System resets automatically after train passes
 
 ## Serial Monitor Output
 
-Enable at 9600 baud to see:
+```
+=================================
+Level Crossing System Ready
+Standalone Mode - ML Embedded
+=================================
+[SENSOR 0] Train detected (furthest)
+[SENSOR 1] Train detected (middle)
+[SENSOR 2] Train detected (nearest)
+[ML] Predicted ETA: 8.5 seconds
+[INFO] Train speed: 67.3 km/h
+[INFO] Acceleration: 0.152 m/s²
+[NOTIFICATION] Intersections alerted
+[GATE] CLOSED - Train approaching
+[TRAIN] Passed crossing - waiting 5s
+[GATE] OPENED - Safe to cross
+[SYSTEM] Reset - Ready for next train
+=================================
+```
+
+## Model Export Options
+
+When running `make ml-export`, choose:
+
+### Option 1: Simplified Decision Tree (Recommended)
 
 ```
-Level Crossing System Ready
-Sensor 0 triggered
-Sensor 1 triggered
-Sensor 2 triggered
-Speed: 120.5 km/h
-ETA: 24.2 seconds
-Gates closed
+Depth 3: ~50 nodes,  ~800 bytes,  fast
+Depth 5: ~200 nodes, ~3KB,        balanced ✓
+Depth 7: ~800 nodes, ~13KB,       best accuracy
 ```
+
+**Recommended:** Depth 5 for good accuracy with reasonable memory.
+
+### Option 2: Linear Regression
+
+```
+Memory: ~100 bytes
+Speed: Very fast
+Accuracy: May be lower for complex patterns
+```
+
+**Use when:** Memory is extremely limited.
+
+## Battery Operation
+
+### Power Requirements
+
+- Arduino Uno: ~50mA idle, ~100mA active
+- Servo: ~500-1000mA when moving
+- LEDs: ~80mA total
+- Display: ~80mA
+- Buzzer: ~30mA
+- **Total:** ~300-400mA average
+
+### Battery Options
+
+**Option 1: 9V Battery**
+
+- Capacity: ~500mAh
+- Runtime: ~1-2 hours
+- Connect to Arduino VIN pin
+
+**Option 2: 4× AA Batteries (6V)**
+
+- Capacity: ~2500mAh
+- Runtime: ~6-8 hours
+- Use battery holder with barrel jack
+
+**Option 3: USB Power Bank**
+
+- Capacity: 5000-10000mAh
+- Runtime: 12-25 hours
+- Connect via USB cable
+
+**Recommendation:** USB power bank for longest runtime.
 
 ## Customization
 
-### Adjust Gate Timing
-
-Change `GATE_CLOSED_ANGLE` (default 0°) if servo range differs.
-
-### Adjust ETA Threshold
-
-Modify condition in `loop()`:
+### Adjust Sensor Positions
 
 ```cpp
-if (calculated_eta < 15.0) {  // Change 15.0 to desired seconds
-```
+// Demo scale (cm)
+const float SENSOR_0_POS = 54.0;
+const float SENSOR_1_POS = 32.4;
+const float SENSOR_2_POS = 16.2;
 
-### Change Sensor Positions
-
-Update constants:
-
-```cpp
-const float SENSOR_0_POS = 2700.0;  // Your distance in meters
+// Or real scale (m)
+const float SENSOR_0_POS = 2700.0;
 const float SENSOR_1_POS = 1620.0;
 const float SENSOR_2_POS = 810.0;
 ```
 
-### Buzzer Pattern
-
-Modify in `activateBuzzer()`:
+### Adjust Timing Thresholds
 
 ```cpp
-if (now - last_beep > 500) {  // Change 500 for different frequency
+const float GATE_CLOSE_THRESHOLD = 10.0;      // Close gate at 10s
+const float NOTIFICATION_THRESHOLD = 15.0;    // Notify at 15s
 ```
+
+### Change Buzzer Pattern
+
+```cpp
+if (now - last_buzzer_toggle >= 300) {  // Faster beeps (300ms)
+```
+
+## Troubleshooting
+
+### Sensors Not Triggering
+
+- Check wiring: OUT → D2/D3/D4, VCC → 5V, GND → GND
+- PIR sensors may need 30s warmup time
+- Test with Serial Monitor
+
+### Gate Not Moving
+
+- Check servo power connection
+- May need external 5V supply if high torque
+- Test angles: `gateServo.write(0);` then `gateServo.write(90);`
+
+### Display Blank
+
+- Verify CLK → D11, DIO → D12
+- Check brightness: `display.setBrightness(0x0f);`
+- Install TM1637Display library
+
+### Wrong ETA Predictions
+
+- Retrain model: `make ml-train`
+- Check sensor positions match training data scale
+- Verify sensors trigger in correct order
+
+### System Doesn't Reset
+
+- Check for infinite loops in code
+- Ensure countdown reaches 0
+- Power cycle Arduino
+
+## Advanced Features
+
+### Multi-Train Support
+
+Currently resets after each train. To support multiple trains:
+
+1. Track multiple train states
+2. Store sensor readings in arrays
+3. Process each train independently
+
+### Remote Monitoring
+
+Add ESP8266/ESP32 for WiFi:
+
+1. Send notifications to mobile app
+2. Log all train passages
+3. Remote system status
+
+### Solar Power
+
+For permanent outdoor installation:
+
+1. Solar panel (5-10W)
+2. Battery (12V, 7Ah)
+3. Charge controller
+4. Run continuously
 
 ## Safety Notes
 
-- Never test with real trains
-- Ensure gate servo cannot trap objects
-- Buzzer volume should be appropriate for environment
-- LEDs should be visible in daylight
-- Always have manual override for gates
+- This is a demonstration system
+- Not certified for actual railway use
+- Always have manual override
+- Test thoroughly before deployment
+- Never rely solely on automated systems
 
-## Scale Modes
+## Files Summary
 
-### Demo Scale (1:87)
+| File                         | Purpose                            |
+| ---------------------------- | ---------------------------------- |
+| `sketch.ino`                 | Main Arduino code (upload this)    |
+| `export_model_to_arduino.py` | Converts ML model to C++           |
+| `eta_model.h`                | Generated ML code (copy to sketch) |
+| `README.md`                  | This documentation                 |
 
-Real positions / 87 = Demo positions
+## Next Steps
 
-- Sensor 0: 31cm
-- Sensor 1: 18.6cm
-- Sensor 2: 9.3cm
-
-### Real Scale
-
-Use actual meter values as shown in code.
-
-## Power Requirements
-
-- Arduino: USB (5V, ~500mA)
-- Servo: May need external 5-6V supply if high torque
-- LEDs: ~20mA each
-- Buzzer: ~30mA
-- Display: ~80mA
-
-Total: ~200-300mA (without high-torque servo)
-
-Recommendation: Use external 5V supply if servo draws >500mA.
+1. ✅ Train ML model: `make ml-train`
+2. ✅ Export to Arduino: `make ml-export`
+3. ✅ Copy `eta_model.h` code to `sketch.ino`
+4. ✅ Upload to Arduino
+5. ✅ Test with sensors
+6. ✅ Deploy on battery power

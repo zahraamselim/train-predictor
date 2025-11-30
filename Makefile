@@ -1,6 +1,7 @@
 .PHONY: help setup install clean \
-	data-traffic data-train data-decisions data-all \
-	ml-train ml-test \
+	data-traffic data-train data-train-full data-all \
+	ml-train ml-test ml-export \
+	arduino-config arduino-export \
 	simulate \
 	validate-all \
 	scale-demo scale-real
@@ -20,22 +21,24 @@ help:
 	@echo "Data Generation:"
 	@echo "  make data-traffic        Generate traffic clearance data"
 	@echo "  make data-train          Generate train approach data (100 scenarios)"
-	@echo "  make data-train-small    Generate small dataset (50 scenarios)"
-	@echo "  make data-decisions      Generate decision data for ML (500 scenarios)"
+	@echo "  make data-train-full     Generate full dataset (500 scenarios)"
 	@echo "  make data-all            Generate all datasets"
 	@echo ""
 	@echo "Machine Learning:"
-	@echo "  make ml-train            Train route optimizer model"
-	@echo "  make ml-test             Test trained model"
+	@echo "  make ml-train            Train ETA predictor model"
+	@echo "  make ml-test             Test trained ETA predictor"
+	@echo "  make ml-export           Export model to Arduino header"
+	@echo ""
+	@echo "Arduino:"
+	@echo "  make arduino-config      Generate crossing_config.h"
+	@echo "  make arduino-export      Export both headers (model + config)"
+	@echo "  make hardware            Complete hardware pipeline"
 	@echo ""
 	@echo "Simulation:"
 	@echo "  make simulate            Run pygame simulation"
 	@echo ""
 	@echo "Validation:"
 	@echo "  make validate-all        Validate all generated data"
-	@echo ""
-	@echo "Complete Workflow:"
-	@echo "  make workflow            Run complete pipeline: data -> ml -> validate"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean               Remove venv"
@@ -70,27 +73,42 @@ data-train:
 	@echo "Generating train approach data (100 scenarios)..."
 	$(BIN)/python -m data_generation.generate_train
 
-data-train-small:
-	@echo "Generating small train dataset (50 scenarios)..."
-	$(BIN)/python -m data_generation.generate_train small
+data-train-full:
+	@echo "Generating full train dataset (500 scenarios)..."
+	$(BIN)/python -m data_generation.generate_train full
 
-data-decisions:
-	@echo "Generating decision data for ML..."
-	$(BIN)/python -m data_generation.generate_decisions
-
-data-all: data-traffic data-train data-decisions
+data-all: data-traffic data-train-full
 	@echo "All datasets generated"
 
 ml-train:
-	@echo "Training route optimizer..."
-	$(BIN)/python -m ml.route_optimizer
+	@echo "Training ETA predictor..."
+	$(BIN)/python -m ml.eta_predictor
 
 ml-test:
-	@echo "Testing route optimizer..."
-	$(BIN)/python -c "from ml.route_optimizer import RouteOptimizer; \
-		opt = RouteOptimizer('ml/models/route_optimizer.pkl'); \
-		result = opt.predict(45, 5, 'medium', 500, 1200); \
+	@echo "Testing ETA predictor..."
+	$(BIN)/python -c "from ml.eta_predictor import ETAPredictor; \
+		predictor = ETAPredictor('ml/models/eta_predictor.pkl'); \
+		result = predictor.predict(8.5, 6.2, 25.5, 28.3, 0.45, 81); \
 		print(f'Test prediction: {result}')"
+
+ml-export:
+	@echo "Exporting model to Arduino..."
+	$(BIN)/python arduino/export_model_to_arduino.py
+
+arduino-config:
+	@echo "Generating crossing configuration..."
+	$(BIN)/python arduino/update_crossing_config.py
+
+arduino-export: arduino-config ml-export
+	@echo ""
+	@echo "Arduino headers exported:"
+	@echo "  - arduino/eta_model.h"
+	@echo "  - arduino/crossing_config.h"
+
+hardware: data-traffic data-train-full ml-train arduino-export
+	@echo ""
+	@echo "Hardware pipeline complete"
+	@echo "Upload arduino/sketch.ino to your board"
 
 simulate:
 	@echo "Starting simulation..."
@@ -104,11 +122,7 @@ validate-train:
 	@echo "Validating train data..."
 	$(BIN)/python -m data_generation.generate_train validate
 
-validate-decisions:
-	@echo "Validating decision data..."
-	$(BIN)/python -m data_generation.generate_decisions validate
-
-validate-all: validate-traffic validate-train validate-decisions
+validate-all: validate-traffic validate-train
 	@echo "All validations complete"
 
 workflow: data-all ml-train validate-all
