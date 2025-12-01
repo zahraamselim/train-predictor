@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  sumo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: sumo-sim
+    volumes:
+      - ../:/app
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - DISPLAY=${DISPLAY}
+      - SUMO_HOME=/usr/share/sumo
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - MESA_GL_VERSION_OVERRIDE=3.3
+    network_mode: host
+    stdin_open: true
+    tty: true
+    privileged: true

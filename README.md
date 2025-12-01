@@ -1,295 +1,349 @@
-# Level Crossing Notification System
+# Intelligent Level Crossing Control System
 
-Intelligent system for managing railway crossing safety using sensors, physics-based calculations, and machine learning.
+High school capstone project implementing ML-based railway crossing control with comprehensive performance metrics.
 
-## Project Structure
+## Project Overview
+
+This system uses SUMO traffic simulation to design and test an intelligent railway level crossing control system. The system:
+
+- Predicts train arrival time using machine learning
+- Controls gates with optimal timing
+- Notifies intersections for vehicle rerouting decisions
+- Recommends engine-off periods to save fuel and reduce emissions
+- Tracks comprehensive performance metrics
+- Deploys to Arduino hardware for physical implementation
+
+## System Architecture
 
 ```
-level-crossing-project/
-├── config/                      # System configuration
-│   ├── system.yaml             # All settings in one file
-│   └── utils.py                # Config loader
-│
-├── physics/                     # Physics engines (consolidated)
-│   ├── vehicle.py              # Vehicle motion physics
-│   ├── train.py                # Train motion physics
-│   └── sensors.py              # IR sensor detection logic
-│
-├── data_generation/            # Dataset generators
-│   ├── generate_traffic.py    # Traffic clearance scenarios
-│   ├── generate_train.py      # Train approach scenarios
-│   ├── generate_decisions.py  # ML training data (wait vs reroute)
-│   └── data/                   # Generated CSV files
-│
-├── ml/                         # Machine learning
-│   ├── route_optimizer.py     # Wait vs reroute decision model
-│   └── models/                 # Trained models (.pkl)
-│
-├── controller/                 # Core system logic
-│   ├── eta_calculator.py      # Physics-based ETA prediction
-│   ├── decision_maker.py      # Gate control + notifications
-│   └── metrics.py             # Performance metrics calculator
-│
-├── simulation/                 # Pygame visualization
-│   ├── main.py                # Main simulation loop
-│   ├── map.py                 # Road network rendering
-│   ├── vehicles.py            # Vehicle agents with physics
-│   └── crossing.py            # Gates, lights, timers, buzzers
-│
-├── arduino/                    # Hardware deployment
-│   ├── sketch.ino             # Arduino code
-│   └── README.md              # Wiring guide
-│
-├── Makefile                    # Build commands
-├── requirements.txt
-└── README.md
+simulation/
+├── network/          SUMO network generation
+├── data/            Data collection and analysis
+├── ml/              ML model training and export
+└── control/         Control logic and metrics
+
+hardware/
+└── arduino/         Arduino implementation
+
+config/              Configuration files
+outputs/             Generated data and reports
+scripts/             Main execution scripts
 ```
+
+## Key Features
+
+### 1. ML-Based ETA Prediction
+
+- Decision tree model optimized for Arduino deployment
+- Advanced feature engineering (speed variance, deceleration rate)
+- Trained on 250+ simulation samples
+- Sub-second prediction accuracy
+
+### 2. Intelligent Control
+
+- Optimal gate timing based on predicted ETA
+- Intersection notification with buzzer and lights
+- Vehicle rerouting recommendations
+- Engine-off suggestions for long waits
+
+### 3. Comprehensive Metrics
+
+- Travel time savings from rerouting
+- Wait time reduction
+- Traffic comfort scoring
+- Fuel consumption and savings
+- CO2 emissions reduction
+
+### 4. Hardware Deployment
+
+- Arduino Uno R3 compatible
+- 3 IR sensors for train detection
+- Servo-controlled gates
+- LED indicators and countdown display
+- Buzzer for audio alerts
 
 ## Quick Start
 
-### 1. Setup
+### Prerequisites
+
+- Docker and Docker Compose
+- SUMO 1.14+ (included in container)
+- Python 3.8+ (included in container)
+- Arduino IDE (for hardware deployment)
+
+### Setup
+
+1. Build the Docker environment:
 
 ```bash
-make setup
-source .venv/bin/activate
+make build
 ```
 
-### 2. Generate Data
+2. Run the complete pipeline:
 
 ```bash
-make data-all
+make pipeline
 ```
 
-This generates:
+This will:
 
-- Traffic clearance times for different densities
-- Train approach scenarios with sensor timings
-- Decision scenarios for ML training
+- Generate SUMO network
+- Collect training data (1 hour simulation)
+- Calculate control thresholds
+- Collect ETA training data
+- Train ML model
+- Export to Arduino
 
-### 3. Train ML Model
+### Running Simulation
 
-```bash
-make ml-train
-```
-
-Trains Random Forest classifier to decide: should vehicles wait or reroute?
-
-### 4. Run Simulation
+Without GUI:
 
 ```bash
 make simulate
 ```
 
-Controls:
-
-- SPACE: Spawn train manually
-- M: Show performance metrics
-- ESC: Quit
-
-## ML Component
-
-**Problem**: Should vehicles at intersection wait for train or take alternative route?
-
-**Features**:
-
-- Train ETA (seconds)
-- Queue length (vehicles)
-- Traffic density (light/medium/heavy)
-- Intersection distance (meters)
-- Alternative route distance (meters)
-
-**Output**: Action (wait/reroute) + confidence score
-
-**Model**: Random Forest Classifier (100 trees, balanced classes)
-
-## Design Requirements Metrics
-
-The system calculates:
-
-1. **Travel Time**: Average journey time with vs without system
-2. **Fuel Consumption**: L/vehicle considering driving, idling, engine-off states
-3. **Comfort**: Discomfort score factoring waiting uncertainty
-4. **Emissions**: kg CO2 per vehicle based on fuel consumption
-
-View metrics in real-time during simulation (press M).
-
-## Workflow
-
-### Complete Pipeline
+With GUI:
 
 ```bash
-make workflow
+make gui
 ```
 
-This runs:
-
-1. Generate all datasets
-2. Train ML model
-3. Validate outputs
-
-### Individual Steps
+### View Metrics
 
 ```bash
-make data-traffic        # Traffic clearance data
-make data-train          # Train approach data
-make data-decisions      # ML training data
-make ml-train           # Train model
-make validate-all       # Check data quality
+make metrics
 ```
 
-## Scale Modes
+Detailed reports are saved in `outputs/metrics/`.
 
-**Demo scale** (75x75cm board):
+## Performance Metrics
 
-```bash
-make scale-demo
-```
+The system tracks and optimizes:
 
-**Real scale** (3km distances):
+### 1. Travel Time
 
-```bash
-make scale-real
-```
+- Total time saved through rerouting
+- Average time per rerouted vehicle
+- Comparison: wait vs alternative route
+
+### 2. Wait Time
+
+- Total wait time at crossings
+- Average wait per vehicle
+- Queue length distribution
+
+### 3. Traffic Comfort
+
+- Composite score (0-1)
+- Based on queue length and wait duration
+- Measured throughout simulation
+
+### 4. Fuel Consumption
+
+- Total fuel used
+- Fuel saved through engine-off
+- Reduction percentage
+
+### 5. Emissions
+
+- Total CO2 emissions
+- Emissions saved through engine-off
+- Environmental impact
+
+## ML Model Details
+
+### Features
+
+- Time between sensor triggers (2 features)
+- Speeds at sensor locations (2 features)
+- Acceleration rate
+- Distance to crossing
+- Average speed
+- Speed variance
+- Deceleration rate
+
+### Model Type
+
+Decision tree regressor optimized for:
+
+- Low complexity (Arduino deployment)
+- High accuracy (MAE < 0.5s)
+- Fast inference (<1ms)
+
+### Training Process
+
+1. Simulate 250+ train passes with varying speeds
+2. Collect sensor trigger times and actual ETAs
+3. Engineer advanced features
+4. Train decision tree with depth optimization
+5. Export to C header file
 
 ## Hardware Components
 
-From Wokwi diagram:
+### Arduino Uno R3
 
-1. **Railway sensors**: 3x IR obstacle avoidance sensors
-2. **Crossing**: TM1637 display, servo gate, red/green LEDs
-3. **Intersection**: Buzzer, red/green LEDs
-
-See `arduino/README.md` for wiring details.
-
-## Physics Models
-
-### Vehicle
-
-```
-Stopping distance = v × t_reaction + v²/(2a_max)
-Clearance time = (distance + vehicle_length) / speed
-```
-
-### Train
-
-```
-F_net = F_traction - F_resistance
-a = F_net / mass
-F_resistance = rolling + air_drag + grade
-```
+- Microcontroller: ATmega328P
+- Operating Voltage: 5V
+- Digital I/O Pins: 14
 
 ### Sensors
 
-Binary detection: triggers when train passes over sensor.
-Records entry/exit times for speed calculation.
+- 3x PIR Motion Sensors (train detection)
+- Positions: 54cm, 32.4cm, 16.2cm from crossing
 
-## ETA Calculation
+### Actuators
 
-**Simple**: Constant speed assumption
+- 1x Servo Motor (gate control)
+- 4x LEDs (status indicators)
+- 1x Buzzer (audio alert)
+- 1x TM1637 (countdown display)
 
-```
-speed = distance_1_to_2 / time_1_to_2
-ETA = remaining_distance / speed
-```
+## Configuration
 
-**Advanced**: Accounts for acceleration
+### Simulation Parameters
 
-```
-Uses quadratic formula: d = v*t + 0.5*a*t²
-```
+Edit `config/simulation.yaml`:
 
-## Design Parameters
+- Simulation duration
+- Train spawn frequency
+- Vehicle densities
+- Safety margins
 
-Configurable in `config/system.yaml`:
+### Thresholds
 
-- Vehicle types (mass, speed, accel, decel)
-- Train types (power, braking, drag)
-- Sensor positions
-- Gate timing offsets
-- Traffic densities
-- Intersection distances
+Generated automatically in `config/thresholds.yaml`:
 
-## Validation
+- Gate closure timing
+- Gate opening timing
+- Intersection notification
+- Engine-off recommendation
+
+## Project Structure Details
+
+### Data Collection
+
+`simulation/data/collector.py`: Collects training data
+
+- Vehicle clearance times
+- Train passage times
+- Intersection travel times
+
+### Threshold Analysis
+
+`simulation/data/analyzer.py`: Calculates control thresholds
+
+- 95th percentile vehicle clearance
+- Maximum train passage time
+- Intersection travel times
+- Sensor placement
+
+### ML Training
+
+`simulation/ml/train_eta.py`: Trains ETA prediction model
+
+- Collects ETA samples
+- Engineers features
+- Trains decision tree
+- Validates accuracy
+
+### Control System
+
+`simulation/control/crossing_controller.py`: Main control logic
+
+- Track trains and calculate ETA
+- Control gates based on thresholds
+- Notify intersections
+- Manage vehicle engines
+
+`simulation/control/rerouter.py`: Vehicle rerouting
+
+- Calculate route alternatives
+- Make rerouting decisions
+- Track time savings
+
+`simulation/control/metrics.py`: Performance tracking
+
+- Track all metrics in real-time
+- Generate comprehensive reports
+- Save detailed CSV files
+
+## Capstone Requirements
+
+This project addresses the following requirements:
+
+### Design Requirements
+
+1. Three measurable parameters: ETA accuracy, gate timing, emissions reduction
+2. Improves traffic quality: Reduced wait time, fuel savings, better comfort
+3. Uses ICT: ML for prediction, sensors for detection, automated control
+4. Contains hardware: Arduino with sensors, actuators, display
+
+### Constraints
+
+1. Testable system: Comprehensive simulation and metrics
+2. Observable inputs/outputs: Real-time logging and visualization
+3. Cost-effective: Uses standard Arduino components
+4. Documented: Complete logbook in outputs/
+
+### Grand Challenges Addressed
+
+- Urban congestion reduction through rerouting
+- Pollution reduction through engine-off strategy
+- Public safety through optimal gate timing
+
+## Development
+
+### Adding Features
+
+1. Modify control logic in `simulation/control/`
+2. Update metrics in `simulation/control/metrics.py`
+3. Test in simulation
+4. Export to Arduino if needed
+
+### Debugging
+
+View logs in real-time:
 
 ```bash
-make validate-all
+make simulate
 ```
 
-Checks:
+Check specific metrics:
 
-- Data integrity (no nulls, correct ranges)
-- Physics correctness
-- Sensor timing order
-- ML model accuracy
-
-## File Count Reduction
-
-**Before**: 36 files across 11 directories
-**After**: ~20 files across 7 directories
-
-**Key consolidations**:
-
-- 01_traffic + 03_train → physics/
-- 04_prediction + 05_integration → controller/
-- All data generation → data_generation/
-- Single ML module instead of scattered
-
-## Example Usage
-
-### Testing ML Model
-
-```python
-from ml.route_optimizer import RouteOptimizer
-
-optimizer = RouteOptimizer('ml/models/route_optimizer.pkl')
-result = optimizer.predict(
-    train_eta=45,           # seconds
-    queue_length=5,         # vehicles
-    traffic_density='medium',
-    intersection_distance=500,    # meters
-    alternative_route_distance=1200
-)
-
-print(result)
-# {'action': 'reroute', 'confidence': 0.87, ...}
+```bash
+cat outputs/metrics/vehicle_metrics.csv
 ```
 
-### Calculating Metrics
+### Testing
 
-```python
-from controller.metrics import PerformanceMetrics
+Run specific pipeline steps:
 
-metrics = PerformanceMetrics()
-
-# Log vehicle journeys during simulation
-for vehicle in completed_vehicles:
-    metrics.log_vehicle_journey({
-        'vehicle_id': vehicle.id,
-        'system_active': True,
-        'total_travel_time': vehicle.total_time,
-        'waiting_time': vehicle.wait_time,
-        'knew_wait_time': True,
-        'action_taken': 'wait',
-        ...
-    })
-
-# Generate report
-report = metrics.generate_full_report()
-metrics.print_report()
+```bash
+make network    # Test network generation
+make data       # Test data collection
+make train      # Test ML training
 ```
 
-## Dependencies
+## Results
 
-```
-numpy
-pandas
-scikit-learn
-pygame
-pyyaml
-```
+Expected performance improvements:
 
-Install with: `make setup`
+- Travel time: 5-10% reduction
+- Wait time: 20-30% reduction
+- Fuel consumption: 15-20% reduction
+- CO2 emissions: 15-20% reduction
+- Traffic comfort: 30-40% improvement
 
 ## License
 
-Educational project for capstone requirements.
+Educational project for high school capstone.
+
+## Authors
+
+Zahraa Selim
+
+## Acknowledgments
+
+- SUMO Traffic Simulation Suite
+- Arduino Community
+- Wokwi Online Simulator

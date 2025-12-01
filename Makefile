@@ -1,144 +1,72 @@
-.PHONY: help setup install clean \
-	data-traffic data-train data-train-full data-all \
-	ml-train ml-test ml-export \
-	arduino-config arduino-export \
-	simulate \
-	validate-all \
-	scale-demo scale-real
-
-PYTHON = python3
-VENV = .venv
-BIN = $(VENV)/bin
+.PHONY: help build up down shell clean
+.PHONY: network data train export simulate gui
+.PHONY: pipeline metrics
 
 help:
-	@echo "Level Crossing Notification System"
+	@echo "Level Crossing Control System"
 	@echo ""
-	@echo "Setup:"
-	@echo "  make setup               Create venv and install dependencies"
-	@echo "  make scale-demo          Switch to demo scale (75cm board)"
-	@echo "  make scale-real          Switch to real scale (3km distances)"
+	@echo "Docker Commands:"
+	@echo "  make build       Build Docker image"
+	@echo "  make up          Start container"
+	@echo "  make down        Stop container"
+	@echo "  make shell       Open shell in container"
 	@echo ""
-	@echo "Data Generation:"
-	@echo "  make data-traffic        Generate traffic clearance data"
-	@echo "  make data-train          Generate train approach data (100 scenarios)"
-	@echo "  make data-train-full     Generate full dataset (500 scenarios)"
-	@echo "  make data-all            Generate all datasets"
+	@echo "Pipeline Commands:"
+	@echo "  make pipeline    Run complete pipeline"
+	@echo "  make network     Generate SUMO network"
+	@echo "  make data        Collect training data"
+	@echo "  make train       Train ML model"
+	@echo "  make export      Export to Arduino"
 	@echo ""
-	@echo "Machine Learning:"
-	@echo "  make ml-train            Train ETA predictor model"
-	@echo "  make ml-test             Test trained ETA predictor"
-	@echo "  make ml-export           Export model to Arduino header"
+	@echo "Simulation Commands:"
+	@echo "  make simulate    Run simulation (no GUI)"
+	@echo "  make gui         Run simulation with GUI"
+	@echo "  make metrics     View metrics report"
 	@echo ""
-	@echo "Arduino:"
-	@echo "  make arduino-config      Generate crossing_config.h"
-	@echo "  make arduino-export      Export both headers (model + config)"
-	@echo "  make hardware            Complete hardware pipeline"
-	@echo ""
-	@echo "Simulation:"
-	@echo "  make simulate            Run pygame simulation"
-	@echo ""
-	@echo "Validation:"
-	@echo "  make validate-all        Validate all generated data"
-	@echo ""
-	@echo "Cleanup:"
-	@echo "  make clean               Remove venv"
-	@echo "  make clean-data          Remove generated data"
-	@echo "  make clean-all           Remove everything"
+	@echo "Utility Commands:"
+	@echo "  make clean       Clean all outputs"
 
-setup: venv install
-	@echo "Setup complete. Activate with: source $(BIN)/activate"
+build:
+	cd docker && docker-compose build
 
-venv:
-	@echo "Creating virtual environment..."
-	$(PYTHON) -m venv $(VENV)
+up:
+	cd docker && docker-compose up -d
 
-install:
-	@echo "Installing dependencies..."
-	$(BIN)/pip install --upgrade pip
-	$(BIN)/pip install -r requirements.txt
+down:
+	cd docker && docker-compose down
 
-scale-demo:
-	@echo "Switching to demo scale (cm)..."
-	$(BIN)/python -m config.utils demo
+shell:
+	cd docker && docker-compose run --rm sumo /bin/bash
 
-scale-real:
-	@echo "Switching to real scale (m)..."
-	$(BIN)/python -m config.utils real
+pipeline:
+	cd docker && docker-compose run --rm sumo python3 scripts/pipeline.py --all
 
-data-traffic:
-	@echo "Generating traffic clearance data..."
-	$(BIN)/python -m data_generation.generate_traffic
+network:
+	cd docker && docker-compose run --rm sumo python3 simulation/network/generator.py
 
-data-train:
-	@echo "Generating train approach data (100 scenarios)..."
-	$(BIN)/python -m data_generation.generate_train
+data:
+	cd docker && docker-compose run --rm sumo python3 simulation/data/collector.py
 
-data-train-full:
-	@echo "Generating full train dataset (500 scenarios)..."
-	$(BIN)/python -m data_generation.generate_train full
+train:
+	cd docker && docker-compose run --rm sumo python3 simulation/ml/train_eta.py --collect --train
 
-data-all: data-traffic data-train-full
-	@echo "All datasets generated"
-
-ml-train:
-	@echo "Training ETA predictor..."
-	$(BIN)/python -m ml.eta_predictor
-
-ml-test:
-	@echo "Testing ETA predictor..."
-	$(BIN)/python -c "from ml.eta_predictor import ETAPredictor; \
-		predictor = ETAPredictor('ml/models/eta_predictor.pkl'); \
-		result = predictor.predict(8.5, 6.2, 25.5, 28.3, 0.45, 81); \
-		print(f'Test prediction: {result}')"
-
-ml-export:
-	@echo "Exporting model to Arduino..."
-	$(BIN)/python arduino/export_model_to_arduino.py
-
-arduino-config:
-	@echo "Generating crossing configuration..."
-	$(BIN)/python arduino/update_crossing_config.py
-
-arduino-export: arduino-config ml-export
-	@echo ""
-	@echo "Arduino headers exported:"
-	@echo "  - arduino/eta_model.h"
-	@echo "  - arduino/crossing_config.h"
-
-hardware: data-traffic data-train-full ml-train arduino-export
-	@echo ""
-	@echo "Hardware pipeline complete"
-	@echo "Upload arduino/sketch.ino to your board"
+export:
+	cd docker && docker-compose run --rm sumo python3 simulation/ml/export.py --all
 
 simulate:
-	@echo "Starting simulation..."
-	$(BIN)/python -m simulation.main
+	cd docker && docker-compose run --rm sumo python3 scripts/run_simulation.py
 
-validate-traffic:
-	@echo "Validating traffic data..."
-	$(BIN)/python -m data_generation.generate_traffic validate
+gui:
+	xhost +local:docker
+	cd docker && docker-compose run --rm sumo python3 scripts/run_simulation.py --gui
 
-validate-train:
-	@echo "Validating train data..."
-	$(BIN)/python -m data_generation.generate_train validate
-
-validate-all: validate-traffic validate-train
-	@echo "All validations complete"
-
-workflow: data-all ml-train validate-all
-	@echo "Complete workflow finished"
-	@echo "Ready to run: make simulate"
+metrics:
+	@echo "Metrics Summary:"
+	@cat outputs/metrics/summary.csv 2>/dev/null || echo "No metrics available. Run simulation first."
 
 clean:
-	@echo "Removing virtual environment..."
-	rm -rf $(VENV)
-
-clean-data:
-	@echo "Removing generated data..."
-	rm -rf data_generation/data/*.csv
-	rm -rf ml/models/*.pkl
-
-clean-all: clean clean-data
-	@echo "Complete cleanup finished"
-
-.DEFAULT_GOAL := help
+	rm -rf outputs/data/* outputs/models/* outputs/metrics/*
+	rm -rf sumo/*.xml
+	rm -rf hardware/arduino/*.h
+	rm -f config/thresholds.yaml
+	cd docker && docker-compose down -v

@@ -1,11 +1,49 @@
-.cursor
-__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
 
-# NOT IMPLEMENTED YET
-docker
-simulations
-2_model_training
-3_decision_logic
-4_arduino_deployment
-5_validation
-6_visualization
+# ML artifacts
+ml/data/raw/*.csv
+ml/data/processed/*.csv
+ml/models/*.pkl
+ml/plots/*.png
+!ml/data/raw/.gitkeep
+!ml/data/processed/.gitkeep
+!ml/models/.gitkeep
+!ml/plots/.gitkeep
+
+# SUMO outputs
+*.log
+*.xml.gz
+tripinfo*.xml
+summary*.xml
+detector*.xml
+
+# Arduino generated
+arduino/eta_model.h
+arduino/crossing_config.h
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/volumes/
+
+# Test outputs
+test_output/
+*.tmp

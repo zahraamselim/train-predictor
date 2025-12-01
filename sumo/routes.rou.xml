@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="car" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="100,150,200"/>
+    <vType id="truck" length="8.0" maxSpeed="18" accel="1.8" decel="4.0" sigma="0.5" color="80,80,80"/>
+    <vType id="train" vClass="rail" length="150" maxSpeed="33.33" accel="0.5" decel="0.5" color="150,30,30"/>
+    
+    <route id="r_north_eb" edges="n_w_to_cross_w cross_w_to_cross_e_n cross_e_to_n_e"/>
+    <route id="r_north_wb" edges="n_e_to_cross_e cross_e_to_cross_w_n cross_w_to_n_w"/>
+    <route id="r_south_eb" edges="s_w_to_cross_w cross_w_to_cross_e_s cross_e_to_s_e"/>
+    <route id="r_south_wb" edges="s_e_to_cross_e cross_e_to_cross_w_s cross_w_to_s_w"/>
+    
+    <route id="r_vert_w_nb" edges="vert_w_s_to_rail vert_w_rail_to_n"/>
+    <route id="r_vert_w_sb" edges="vert_w_n_to_rail vert_w_rail_to_s"/>
+    <route id="r_vert_e_nb" edges="vert_e_s_to_rail vert_e_rail_to_n"/>
+    <route id="r_vert_e_sb" edges="vert_e_n_to_rail vert_e_rail_to_s"/>
+    
+    <route id="r_rail" edges="rail_w_to_cross_w rail_cross_w_to_e rail_cross_e_to_e"/>
+    
+    <flow id="flow_north_eb" type="car" route="r_north_eb" begin="0" end="3600" vehsPerHour="200"/>
+    <flow id="flow_north_wb" type="car" route="r_north_wb" begin="0" end="3600" vehsPerHour="200"/>
+    <flow id="flow_south_eb" type="car" route="r_south_eb" begin="0" end="3600" vehsPerHour="200"/>
+    <flow id="flow_south_wb" type="car" route="r_south_wb" begin="0" end="3600" vehsPerHour="200"/>
+    
+    <flow id="flow_vert_w_nb" type="car" route="r_vert_w_nb" begin="0" end="3600" vehsPerHour="80"/>
+    <flow id="flow_vert_w_sb" type="car" route="r_vert_w_sb" begin="0" end="3600" vehsPerHour="80"/>
+    <flow id="flow_vert_e_nb" type="car" route="r_vert_e_nb" begin="0" end="3600" vehsPerHour="80"/>
+    <flow id="flow_vert_e_sb" type="car" route="r_vert_e_sb" begin="0" end="3600" vehsPerHour="80"/>
+    
+    <flow id="flow_trucks" type="truck" route="r_north_eb" begin="0" end="3600" vehsPerHour="50"/>
+    <flow id="flow_trains" type="train" route="r_rail" begin="0" end="3600" period="300"/>
+</routes>

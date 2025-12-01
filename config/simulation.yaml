@@ -1,0 +1,39 @@
+simulation:
+  duration: 3600
+  step_length: 0.1
+  train_period: 300
+
+network:
+  crossing_w: -200.0
+  crossing_e: 200.0
+  intersections:
+    west: -200.0
+    east: 200.0
+
+train:
+  min_speed: 25.0
+  max_speed: 38.0
+  typical_speed: 33.33
+  length: 150.0
+
+vehicle:
+  max_speed: 20.0
+  typical_speed: 16.67
+  decel: 4.5
+  accel: 2.6
+
+safety:
+  margin_close: 2.0
+  margin_open: 3.0
+  driver_reaction: 2.5
+  engine_off_threshold: 15.0
+
+metrics:
+  fuel_rate_driving: 0.08
+  fuel_rate_idling: 0.01
+  fuel_rate_off: 0.0
+  co2_per_liter: 2.31
+
+hardware:
+  simulation_scale: 50
+  hardware_scale: 0.02
