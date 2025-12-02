@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from simulation.utils.logger import Logger
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 class DataCollector:
     """Collect training data from SUMO simulation"""
@@ -190,3 +193,16 @@ class DataCollector:
         df = pd.DataFrame(self.travel_data)
         df.to_csv(self.output_dir / 'vehicle_travels.csv', index=False)
         Logger.log(f"Saved {len(df)} travel samples")
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--duration', type=int, default=3600)
+    args = parser.parse_args()
+    
+    collector = DataCollector()
+    collector.run(args.duration)

@@ -2,6 +2,9 @@ import pickle
 import yaml
 from pathlib import Path
 from simulation.utils.logger import Logger
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 class ArduinoExporter:
     """Export ML model and config to Arduino"""
@@ -85,3 +88,13 @@ const float SENSOR_2_POS = {sensors_hw[2]:.2f}f;
         code += f"{indent}}}\n"
         
         return code
+
+if __name__ == '__main__':
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    
+    exporter = ArduinoExporter()
+    exporter.export_model()
+    exporter.export_config()
+    Logger.log("Export completed")

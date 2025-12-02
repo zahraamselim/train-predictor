@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 class NetworkGenerator:
     """Generate SUMO networks for simulation or training"""
@@ -21,7 +23,7 @@ class NetworkGenerator:
         self.sensor_positions = sensors
         self._write_training_nodes()
         self._write_training_edges()
-        self._write_training_routes()
+        self._write_training_routes()  # NEW: Add routes file for training
         self._write_training_config()
         return self._build_network()
     
@@ -36,9 +38,9 @@ class NetworkGenerator:
     def _write_training_nodes(self):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <nodes>
-    <node id="track_start" x="-1500" y="0" type="priority"/>
+    <node id="track_start" x="-2000" y="0" type="priority"/>
     <node id="crossing" x="0" y="0" type="rail_crossing"/>
-    <node id="track_end" x="500" y="0" type="priority"/>
+    <node id="track_end" x="1000" y="0" type="priority"/>
 </nodes>
 """
         self._write_file("network.nod.xml", content)
@@ -53,10 +55,10 @@ class NetworkGenerator:
         self._write_file("network.edg.xml", content)
     
     def _write_training_routes(self):
+        """NEW: Write routes file for training mode with vehicle type definitions"""
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <routes>
-    <vType id="train" vClass="rail" length="150" minSpeed="20.0" maxSpeed="45.0" 
-           speedFactor="1.0" speedDev="0.0" accel="1.0" decel="1.0" color="150,30,30"/>
+    <vType id="train_type" vClass="rail" length="150" maxSpeed="45.0" accel="2.0" decel="2.0" color="150,30,30"/>
     <route id="train_route" edges="track_to_crossing crossing_to_end"/>
 </routes>
 """
@@ -75,6 +77,7 @@ class NetworkGenerator:
     </time>
     <processing>
         <time-to-teleport value="-1"/>
+        <collision.check-junctions value="false"/>
     </processing>
 </configuration>
 """
@@ -218,3 +221,19 @@ class NetworkGenerator:
             f"--no-warnings"
         )
         return os.system(cmd) == 0
+
+if __name__ == '__main__':
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    
+    from simulation.utils.logger import Logger
+    
+    Logger.section("Generating complete network")
+    generator = NetworkGenerator(mode="complete")
+    if generator.generate():
+        Logger.log("Network generated successfully")
+        sys.exit(0)
+    else:
+        Logger.log("Network generation failed")
+        sys.exit(1)

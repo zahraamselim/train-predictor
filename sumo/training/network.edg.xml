@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <edge id="track_to_crossing" from="track_start" to="crossing" numLanes="1" speed="50.0" allow="rail"/>
+    <edge id="crossing_to_end" from="crossing" to="track_end" numLanes="1" speed="50.0" allow="rail"/>
+</edges>

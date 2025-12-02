@@ -1,5 +1,8 @@
 import traci
 from simulation.utils.logger import Logger
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 class VehicleRerouter:
     """Calculate optimal routes and reroute vehicles"""

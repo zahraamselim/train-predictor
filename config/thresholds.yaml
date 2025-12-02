@@ -1,0 +1,11 @@
+closure_before_eta: 6.805
+engine_off_threshold: 15.0
+max_train_speed: 14.150000000000066
+notification_times:
+  east: 19.015
+  west: 19.015
+opening_after_etd: 3.0
+sensor_positions:
+- 1130.0614500000052
+- 645.749400000003
+- 322.8747000000015

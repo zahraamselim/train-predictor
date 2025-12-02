@@ -1,9 +1,18 @@
 import sys
+import os
+sys.path.insert(0, '/app')
+
 import traci
-from simulation.utils.logger import Logger
-from simulation.control.controller import CrossingController
-from simulation.control.rerouter import VehicleRerouter
-from simulation.control.metrics import MetricsTracker
+from datetime import datetime
+
+def timestamp():
+    return datetime.now().strftime("%H:%M:%S")
+
+def log(message):
+    print(f"[{timestamp()}] {message}")
+
+def section(title):
+    print(f"\n[{timestamp()}] {title}")
 
 class Simulator:
     """Run level crossing simulation"""
@@ -12,6 +21,10 @@ class Simulator:
         self.use_gui = use_gui
         self.duration = duration
         
+        from simulation.control.controller import CrossingController
+        from simulation.control.rerouter import VehicleRerouter
+        from simulation.control.metrics import MetricsTracker
+        
         self.controller = CrossingController()
         self.rerouter = VehicleRerouter()
         self.metrics = MetricsTracker()
@@ -19,7 +32,7 @@ class Simulator:
         self.step_count = 0
     
     def run(self):
-        Logger.section(f"Starting simulation ({self.duration}s)")
+        section(f"Starting simulation ({self.duration}s)")
         
         self._start_sumo()
         
@@ -39,10 +52,10 @@ class Simulator:
                 
                 self.step_count += 1
             
-            Logger.section("Simulation completed")
+            section("Simulation completed")
         
         except KeyboardInterrupt:
-            Logger.log("Interrupted")
+            log("Interrupted")
         
         finally:
             traci.close()
@@ -77,15 +90,15 @@ class Simulator:
         waiting = sum(1 for v in traci.vehicle.getIDList() 
                      if 'train' not in v.lower() and traci.vehicle.getSpeed(v) < 0.5)
         
-        Logger.log(f"t={t:.0f}s | Vehicles: {total_vehicles} | Waiting: {waiting} | "
-                  f"Engines off: {state['engines_off']} | Gates: {'CLOSED' if state['gates_closed'] else 'OPEN'}")
+        log(f"t={t:.0f}s | Vehicles: {total_vehicles} | Waiting: {waiting} | "
+            f"Engines off: {state['engines_off']} | Gates: {'CLOSED' if state['gates_closed'] else 'OPEN'}")
     
     def _finalize(self):
         metrics = self.metrics.finalize()
         
         reroute_stats = self.rerouter.get_stats()
         if reroute_stats:
-            Logger.section("Rerouting Statistics")
+            section("Rerouting Statistics")
             print(f"  Total decisions: {reroute_stats['total_decisions']}")
             print(f"  Rerouted: {reroute_stats['rerouted']}")
             print(f"  Time saved: {reroute_stats['total_time_saved']:.0f}s")

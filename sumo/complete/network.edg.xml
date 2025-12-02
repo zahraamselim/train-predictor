@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <edge id="n_e_to_cross_e" from="n_e" to="cross_e_n" numLanes="2" speed="16.67"/>
+    <edge id="cross_e_to_cross_w_n" from="cross_e_n" to="cross_w_n" numLanes="2" speed="16.67"/>
+    <edge id="cross_w_to_n_w" from="cross_w_n" to="n_w" numLanes="2" speed="16.67"/>
+    
+    <edge id="n_w_to_cross_w" from="n_w" to="cross_w_n" numLanes="2" speed="16.67"/>
+    <edge id="cross_w_to_cross_e_n" from="cross_w_n" to="cross_e_n" numLanes="2" speed="16.67"/>
+    <edge id="cross_e_to_n_e" from="cross_e_n" to="n_e" numLanes="2" speed="16.67"/>
+    
+    <edge id="s_e_to_cross_e" from="s_e" to="cross_e_s" numLanes="2" speed="16.67"/>
+    <edge id="cross_e_to_cross_w_s" from="cross_e_s" to="cross_w_s" numLanes="2" speed="16.67"/>
+    <edge id="cross_w_to_s_w" from="cross_w_s" to="s_w" numLanes="2" speed="16.67"/>
+    
+    <edge id="s_w_to_cross_w" from="s_w" to="cross_w_s" numLanes="2" speed="16.67"/>
+    <edge id="cross_w_to_cross_e_s" from="cross_w_s" to="cross_e_s" numLanes="2" speed="16.67"/>
+    <edge id="cross_e_to_s_e" from="cross_e_s" to="s_e" numLanes="2" speed="16.67"/>
+    
+    <edge id="vert_w_s_to_rail" from="cross_w_s" to="cross_w_rail" numLanes="1" speed="13.89"/>
+    <edge id="vert_w_rail_to_n" from="cross_w_rail" to="cross_w_n" numLanes="1" speed="13.89"/>
+    <edge id="vert_w_n_to_rail" from="cross_w_n" to="cross_w_rail" numLanes="1" speed="13.89"/>
+    <edge id="vert_w_rail_to_s" from="cross_w_rail" to="cross_w_s" numLanes="1" speed="13.89"/>
+    
+    <edge id="vert_e_s_to_rail" from="cross_e_s" to="cross_e_rail" numLanes="1" speed="13.89"/>
+    <edge id="vert_e_rail_to_n" from="cross_e_rail" to="cross_e_n" numLanes="1" speed="13.89"/>
+    <edge id="vert_e_n_to_rail" from="cross_e_n" to="cross_e_rail" numLanes="1" speed="13.89"/>
+    <edge id="vert_e_rail_to_s" from="cross_e_rail" to="cross_e_s" numLanes="1" speed="13.89"/>
+    
+    <edge id="rail_w_to_cross_w" from="rail_w" to="cross_w_rail" numLanes="1" speed="33.33" allow="rail"/>
+    <edge id="rail_cross_w_to_e" from="cross_w_rail" to="cross_e_rail" numLanes="1" speed="33.33" allow="rail"/>
+    <edge id="rail_cross_e_to_e" from="cross_e_rail" to="rail_e" numLanes="1" speed="33.33" allow="rail"/>
+</edges>

@@ -1,10 +1,17 @@
 import sys
-from simulation.utils.logger import Logger
-from simulation.network.generator import NetworkGenerator
-from simulation.data.collector import DataCollector
-from simulation.data.analyzer import ThresholdAnalyzer
-from simulation.ml.trainer import ETATrainer
-from simulation.ml.exporter import ArduinoExporter
+import os
+sys.path.insert(0, '/app')
+
+from datetime import datetime
+
+def timestamp():
+    return datetime.now().strftime("%H:%M:%S")
+
+def log(message):
+    print(f"[{timestamp()}] {message}")
+
+def section(title):
+    print(f"\n[{timestamp()}] {title}")
 
 class Pipeline:
     """Execute full workflow"""
@@ -19,36 +26,42 @@ class Pipeline:
         }
     
     def run(self, step_names=None):
-        Logger.section("Starting pipeline")
+        section("Starting pipeline")
         
         steps_to_run = step_names or list(self.steps.keys())
         
         for i, name in enumerate(steps_to_run, 1):
-            Logger.section(f"Step {i}/{len(steps_to_run)}: {name}")
+            section(f"Step {i}/{len(steps_to_run)}: {name}")
             
             try:
                 self.steps[name]()
             except Exception as e:
-                Logger.log(f"ERROR in {name}: {e}")
+                log(f"ERROR in {name}: {e}")
+                import traceback
+                traceback.print_exc()
                 return False
         
-        Logger.section("Pipeline completed")
+        section("Pipeline completed")
         return True
     
     def generate_network(self):
+        from simulation.network.generator import NetworkGenerator
         generator = NetworkGenerator(mode="complete")
         if not generator.generate():
             raise Exception("Network generation failed")
     
     def collect_data(self):
+        from simulation.data.collector import DataCollector
         collector = DataCollector()
         collector.run(duration=3600)
     
     def analyze_thresholds(self):
+        from simulation.data.analyzer import ThresholdAnalyzer
         analyzer = ThresholdAnalyzer()
         analyzer.analyze()
     
     def train_model(self):
+        from simulation.ml.trainer import ETATrainer
         trainer = ETATrainer()
         df = trainer.collect_data(num_samples=250)
         if df is None:
@@ -59,6 +72,7 @@ class Pipeline:
             raise Exception("Model training failed")
     
     def export_arduino(self):
+        from simulation.ml.exporter import ArduinoExporter
         exporter = ArduinoExporter()
         exporter.export_model()
         exporter.export_config()

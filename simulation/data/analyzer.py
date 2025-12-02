@@ -2,6 +2,9 @@ import pandas as pd
 import yaml
 from pathlib import Path
 from simulation.utils.logger import Logger
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 class ThresholdAnalyzer:
     """Calculate control thresholds from collected data"""
@@ -85,3 +88,11 @@ class ThresholdAnalyzer:
         Logger.log(f"Saved to {self.output_file}")
         
         return thresholds
+
+if __name__ == '__main__':
+    import sys
+    import os
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+    
+    analyzer = ThresholdAnalyzer()
+    analyzer.analyze()
