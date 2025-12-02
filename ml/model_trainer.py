@@ -1,21 +1,24 @@
 """
-Model training module
+Train ETA prediction model
+Run: python -m ml.model_trainer
 """
 import pandas as pd
 import numpy as np
 import pickle
+import yaml
 from pathlib import Path
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from utils import get_logger
+from utils.logger import Logger
 
 class ModelTrainer:
-    def __init__(self, config):
-        self.config = config
-        self.logger = get_logger(__name__)
-        self.model_dir = Path(config['output']['model_dir'])
-        self.model_dir.mkdir(exist_ok=True)
+    def __init__(self, config_path='config/ml.yaml'):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+        
+        self.model_dir = Path('outputs/models')
+        self.model_dir.mkdir(parents=True, exist_ok=True)
         
     def prepare_data(self, features_df):
         """Prepare train/val/test splits"""
@@ -37,7 +40,7 @@ class ModelTrainer:
             X_temp, y_temp, test_size=val_ratio, random_state=42
         )
         
-        self.logger.info(f"Data split - Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
+        Logger.log(f"Data split - Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
         
         return X_train, X_val, X_test, y_train, y_val, y_test, feature_cols
     
@@ -66,7 +69,7 @@ class ModelTrainer:
                 best_model = model
                 best_depth = depth
         
-        self.logger.info(f"Best model: max_depth={best_depth}, validation MAE={best_mae:.3f}s")
+        Logger.log(f"Best model: max_depth={best_depth}, validation MAE={best_mae:.3f}s")
         
         return best_model, best_depth
     
@@ -83,20 +86,20 @@ class ModelTrainer:
         physics_mae = np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics']))
         
         metrics = {
-            'train_mae': train_mae,
-            'test_mae': test_mae,
-            'test_rmse': test_rmse,
-            'test_r2': test_r2,
-            'physics_baseline_mae': physics_mae,
-            'improvement_over_physics': ((physics_mae - test_mae) / physics_mae) * 100
+            'train_mae': float(train_mae),
+            'test_mae': float(test_mae),
+            'test_rmse': float(test_rmse),
+            'test_r2': float(test_r2),
+            'physics_baseline_mae': float(physics_mae),
+            'improvement_over_physics': float(((physics_mae - test_mae) / physics_mae) * 100)
         }
         
-        self.logger.info(f"Train MAE: {train_mae:.3f}s")
-        self.logger.info(f"Test MAE: {test_mae:.3f}s")
-        self.logger.info(f"Test RMSE: {test_rmse:.3f}s")
-        self.logger.info(f"Test R2: {test_r2:.3f}")
-        self.logger.info(f"Physics baseline MAE: {physics_mae:.3f}s")
-        self.logger.info(f"Improvement over physics: {metrics['improvement_over_physics']:.1f}%")
+        Logger.log(f"Train MAE: {train_mae:.3f}s")
+        Logger.log(f"Test MAE: {test_mae:.3f}s")
+        Logger.log(f"Test RMSE: {test_rmse:.3f}s")
+        Logger.log(f"Test R2: {test_r2:.3f}")
+        Logger.log(f"Physics baseline MAE: {physics_mae:.3f}s")
+        Logger.log(f"Improvement: {metrics['improvement_over_physics']:.1f}%")
         
         return metrics
     
@@ -105,18 +108,28 @@ class ModelTrainer:
         model_data = {
             'model': model,
             'feature_cols': feature_cols,
-            'metrics': metrics
+            'metrics': metrics,
+            'config': self.config
         }
         
-        model_path = self.model_dir / self.config['output']['python_model']
+        model_path = self.model_dir / 'eta_model.pkl'
         with open(model_path, 'wb') as f:
             pickle.dump(model_data, f)
         
-        self.logger.info(f"Model saved to {model_path}")
+        Logger.log(f"Model saved to {model_path}")
     
-    def train(self, features_df):
+    def train(self, features_path=None):
         """Execute full training pipeline"""
-        self.logger.info("Starting model training")
+        if features_path is None:
+            features_path = Path('outputs/data/features.csv')
+        
+        Logger.section("Training ETA prediction model")
+        
+        if not Path(features_path).exists():
+            Logger.log(f"Features file not found: {features_path}")
+            return None
+        
+        features_df = pd.read_csv(features_path)
         
         X_train, X_val, X_test, y_train, y_val, y_test, feature_cols = self.prepare_data(features_df)
         
@@ -127,3 +140,14 @@ class ModelTrainer:
         self.save_model(model, feature_cols, metrics)
         
         return model, metrics
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Train ETA prediction model')
+    parser.add_argument('--input', help='Input features CSV file')
+    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    args = parser.parse_args()
+    
+    trainer = ModelTrainer(args.config)
+    trainer.train(args.input)

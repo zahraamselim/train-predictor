@@ -1,20 +1,45 @@
 """
-Model evaluation and results visualization
+Evaluate and save model results
+Run: python -m ml.evaluator
 """
 import json
+import pickle
+import pandas as pd
+import yaml
 from pathlib import Path
-from utils import get_logger
+from utils.logger import Logger
 
 class ModelEvaluator:
-    def __init__(self, config):
-        self.config = config
-        self.logger = get_logger(__name__)
-        self.results_dir = Path(config['output']['results_dir'])
-        self.results_dir.mkdir(exist_ok=True)
+    def __init__(self, config_path='config/ml.yaml'):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
         
-    def evaluate(self, model, features_df, metrics):
+        self.results_dir = Path('outputs/results')
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+        
+    def evaluate(self, model_path=None, features_path=None):
         """Evaluate and save results"""
-        self.logger.info("Evaluating model performance")
+        if model_path is None:
+            model_path = Path('outputs/models/eta_model.pkl')
+        if features_path is None:
+            features_path = Path('outputs/data/features.csv')
+        
+        Logger.section("Evaluating model performance")
+        
+        if not model_path.exists():
+            Logger.log(f"Model file not found: {model_path}")
+            return None
+        
+        if not features_path.exists():
+            Logger.log(f"Features file not found: {features_path}")
+            return None
+        
+        with open(model_path, 'rb') as f:
+            model_data = pickle.load(f)
+        
+        model = model_data['model']
+        metrics = model_data['metrics']
+        features_df = pd.read_csv(features_path)
         
         results = {
             'metrics': metrics,
@@ -27,8 +52,7 @@ class ModelEvaluator:
             },
             'model_info': {
                 'type': 'DecisionTreeRegressor',
-                'n_features': len([col for col in features_df.columns 
-                                  if col not in ['run_id', 'eta_actual', 'eta_physics']]),
+                'n_features': len(model_data['feature_cols']),
                 'n_nodes': model.tree_.node_count,
                 'max_depth': model.get_depth()
             }
@@ -36,17 +60,17 @@ class ModelEvaluator:
         
         results_path = self.results_dir / 'evaluation_results.json'
         with open(results_path, 'w') as f:
-            json.dump(results, indent=2, fp=f)
+            json.dump(results, f, indent=2)
         
-        self.logger.info(f"Results saved to {results_path}")
+        Logger.log(f"Results saved to {results_path}")
         
         self.print_summary(results)
+        
+        return results
     
     def print_summary(self, results):
         """Print evaluation summary"""
-        print("\n" + "=" * 60)
-        print("MODEL EVALUATION SUMMARY")
-        print("=" * 60)
+        print("\nModel Evaluation Summary")
         
         print("\nDataset Statistics:")
         stats = results['dataset_stats']
@@ -69,6 +93,16 @@ class ModelEvaluator:
         info = results['model_info']
         print(f"  Features: {info['n_features']}")
         print(f"  Tree Nodes: {info['n_nodes']}")
-        print(f"  Max Depth: {info['max_depth']}")
-        
-        print("=" * 60 + "\n")
+        print(f"  Max Depth: {info['max_depth']}\n")
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Evaluate trained model')
+    parser.add_argument('--model', help='Model pickle file')
+    parser.add_argument('--features', help='Features CSV file')
+    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    args = parser.parse_args()
+    
+    evaluator = ModelEvaluator(args.config)
+    evaluator.evaluate(args.model, args.features)

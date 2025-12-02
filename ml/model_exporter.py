@@ -1,15 +1,18 @@
 """
-Model export for Arduino and Python deployment
+Export trained model for Arduino deployment
+Run: python -m ml.model_exporter
 """
 import pickle
+import yaml
 from pathlib import Path
-from utils import get_logger
+from utils.logger import Logger
 
 class ModelExporter:
-    def __init__(self, config):
-        self.config = config
-        self.logger = get_logger(__name__)
-        self.model_dir = Path(config['output']['model_dir'])
+    def __init__(self, config_path='config/ml.yaml'):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+        
+        self.model_dir = Path('outputs/models')
         
     def generate_arduino_code(self, tree, feature_cols):
         """Generate C code for Arduino deployment"""
@@ -54,11 +57,17 @@ float predictETA(float features[{len(feature_cols)}]) {{
         
         return header
     
-    def export_arduino(self, model):
+    def export(self, model_path=None):
         """Export model as Arduino header file"""
-        self.logger.info("Exporting Arduino header")
+        if model_path is None:
+            model_path = self.model_dir / 'eta_model.pkl'
         
-        model_path = self.model_dir / self.config['output']['python_model']
+        Logger.section("Exporting model for Arduino")
+        
+        if not Path(model_path).exists():
+            Logger.log(f"Model file not found: {model_path}")
+            return False
+        
         with open(model_path, 'rb') as f:
             model_data = pickle.load(f)
         
@@ -67,12 +76,21 @@ float predictETA(float features[{len(feature_cols)}]) {{
         
         arduino_code = self.generate_arduino_code(tree, feature_cols)
         
-        output_path = self.model_dir / self.config['output']['arduino_header']
+        output_path = self.model_dir / 'eta_model.h'
         output_path.write_text(arduino_code)
         
-        self.logger.info(f"Arduino header saved to {output_path}")
-        self.logger.info(f"Model size: {len(feature_cols)} features, {tree.node_count} nodes")
+        Logger.log(f"Arduino header saved to {output_path}")
+        Logger.log(f"Model size: {len(feature_cols)} features, {tree.node_count} nodes")
+        
+        return True
+
+if __name__ == '__main__':
+    import argparse
     
-    def export_python(self, model):
-        """Python model already saved during training"""
-        self.logger.info("Python model export complete")
+    parser = argparse.ArgumentParser(description='Export model for Arduino')
+    parser.add_argument('--input', help='Input model pickle file')
+    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    args = parser.parse_args()
+    
+    exporter = ModelExporter(args.config)
+    exporter.export(args.input)

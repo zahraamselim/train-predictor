@@ -1,22 +1,27 @@
 """
-Data generation module using SUMO simulations
+Generate training data using SUMO simulations
+Run: python -m ml.data_generator
 """
 import subprocess
 import pandas as pd
 import numpy as np
+import yaml
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from utils import get_logger
+from utils.logger import Logger
 
 class DataGenerator:
-    def __init__(self, config):
-        self.config = config
-        self.logger = get_logger(__name__)
-        self.data_dir = Path(config['output']['data_dir'])
-        self.data_dir.mkdir(exist_ok=True)
+    def __init__(self, config_path='config/ml.yaml'):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+        
+        self.output_dir = Path('outputs/data')
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         
     def create_network(self):
-        """Create SUMO network from config"""
+        """Create simple SUMO network for training"""
+        Logger.log("Creating SUMO training network")
+        
         nodes = f"""<?xml version="1.0" encoding="UTF-8"?>
 <nodes>
     <node id="start" x="{self.config['network']['start_x']}" y="0"/>
@@ -29,19 +34,24 @@ class DataGenerator:
           speed="{self.config['network']['max_speed']}"/>
 </edges>"""
         
-        Path('rail.nod.xml').write_text(nodes)
-        Path('rail.edg.xml').write_text(edges)
+        Path('training.nod.xml').write_text(nodes)
+        Path('training.edg.xml').write_text(edges)
         
         result = subprocess.run([
-            'netconvert', 
-            '--node-files=rail.nod.xml', 
-            '--edge-files=rail.edg.xml',
-            '--output-file=rail.net.xml', 
+            'netconvert',
+            '--node-files=training.nod.xml',
+            '--edge-files=training.edg.xml',
+            '--output-file=training.net.xml',
             '--no-turnarounds',
             '--no-warnings'
         ], capture_output=True, text=True)
         
-        return result.returncode == 0
+        if result.returncode == 0:
+            Logger.log("Network created successfully")
+            return True
+        else:
+            Logger.log(f"Network creation failed: {result.stderr}")
+            return False
     
     def generate_train_params(self, n_samples):
         """Generate diverse train parameters"""
@@ -110,7 +120,7 @@ class DataGenerator:
         config = f"""<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <input>
-        <net-file value="rail.net.xml"/>
+        <net-file value="training.net.xml"/>
         <route-files value="{route_file}"/>
     </input>
     <time>
@@ -130,7 +140,7 @@ class DataGenerator:
         Path(config_file).write_text(config)
         
         result = subprocess.run(
-            ['sumo', '-c', config_file, '--no-step-log', '--no-warnings'], 
+            ['sumo', '-c', config_file, '--no-step-log', '--no-warnings'],
             capture_output=True
         )
         
@@ -172,15 +182,15 @@ class DataGenerator:
         
         return pd.DataFrame(data) if data else None
     
-    def run(self):
+    def run(self, n_samples=None):
         """Execute full data generation pipeline"""
-        self.logger.info("Creating SUMO network")
-        if not self.create_network():
-            self.logger.error("Network creation failed")
-            return None
+        if n_samples is None:
+            n_samples = self.config['training']['n_samples']
         
-        n_samples = self.config['training']['n_samples']
-        self.logger.info(f"Generating {n_samples} simulation samples")
+        Logger.section(f"Generating {n_samples} training samples")
+        
+        if not self.create_network():
+            return None
         
         train_params = self.generate_train_params(n_samples)
         all_data = []
@@ -194,17 +204,28 @@ class DataGenerator:
                 successful += 1
                 
                 if (i + 1) % 50 == 0:
-                    self.logger.info(f"Progress: {successful}/{i+1} ({successful/(i+1)*100:.1f}%)")
+                    Logger.log(f"Progress: {successful}/{i+1} ({successful/(i+1)*100:.1f}%)")
         
         if not all_data:
-            self.logger.error("No successful simulations")
+            Logger.log("No successful simulations")
             return None
         
         combined = pd.concat(all_data, ignore_index=True)
-        output_path = self.data_dir / 'raw_trajectories.csv'
+        output_path = self.output_dir / 'raw_trajectories.csv'
         combined.to_csv(output_path, index=False)
         
-        self.logger.info(f"Generated {successful} trajectories with {len(combined)} data points")
-        self.logger.info(f"Saved to {output_path}")
+        Logger.log(f"Generated {successful} trajectories with {len(combined)} data points")
+        Logger.log(f"Saved to {output_path}")
         
         return combined
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Generate ML training data')
+    parser.add_argument('--samples', type=int, help='Number of samples to generate')
+    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    args = parser.parse_args()
+    
+    generator = DataGenerator(args.config)
+    generator.run(args.samples)

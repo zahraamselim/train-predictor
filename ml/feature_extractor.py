@@ -1,23 +1,23 @@
 """
-Feature extraction from trajectory data
+Extract features from trajectory data
+Run: python -m ml.feature_extractor
 """
 import pandas as pd
 import numpy as np
+import yaml
 from pathlib import Path
-from utils import get_logger
+from utils.logger import Logger
 
 class FeatureExtractor:
-    def __init__(self, config):
-        self.config = config
-        self.logger = get_logger(__name__)
-        self.sensors = config['sensors']
-        self.data_dir = Path(config['output']['data_dir'])
+    def __init__(self, config_path='config/ml.yaml'):
+        with open(config_path) as f:
+            self.config = yaml.safe_load(f)
+        
+        self.sensors = self.config['sensors']
+        self.output_dir = Path('outputs/data')
         
     def calculate_physics_eta(self, speed, accel, distance):
-        """
-        Physics-based ETA calculation using kinematic equations
-        d = v*t + 0.5*a*t^2
-        """
+        """Calculate ETA using kinematic equations: d = v*t + 0.5*a*t^2"""
         if abs(accel) > 0.01:
             discriminant = speed**2 + 2*accel*distance
             if discriminant >= 0:
@@ -101,10 +101,18 @@ class FeatureExtractor:
         
         return features
     
-    def extract(self, trajectory_df):
+    def extract(self, trajectory_path=None):
         """Extract features from all trajectories"""
-        self.logger.info("Extracting features from trajectories")
+        if trajectory_path is None:
+            trajectory_path = self.output_dir / 'raw_trajectories.csv'
         
+        Logger.section("Extracting features from trajectories")
+        
+        if not Path(trajectory_path).exists():
+            Logger.log(f"Trajectory file not found: {trajectory_path}")
+            return None
+        
+        trajectory_df = pd.read_csv(trajectory_path)
         features_list = []
         
         for run_id in trajectory_df['run_id'].unique():
@@ -116,16 +124,29 @@ class FeatureExtractor:
                 features_list.append(features)
         
         if not features_list:
-            self.logger.error("No features extracted")
+            Logger.log("No features extracted")
             return None
         
         features_df = pd.DataFrame(features_list)
         
-        output_path = self.data_dir / 'features.csv'
+        output_path = self.output_dir / 'features.csv'
         features_df.to_csv(output_path, index=False)
         
-        self.logger.info(f"Extracted {len(features_df)} feature sets")
-        self.logger.info(f"Physics baseline MAE: {np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics'])):.3f}s")
-        self.logger.info(f"Saved to {output_path}")
+        physics_mae = np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics']))
+        
+        Logger.log(f"Extracted {len(features_df)} feature sets")
+        Logger.log(f"Physics baseline MAE: {physics_mae:.3f}s")
+        Logger.log(f"Saved to {output_path}")
         
         return features_df
+
+if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Extract features from trajectories')
+    parser.add_argument('--input', help='Input trajectory CSV file')
+    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    args = parser.parse_args()
+    
+    extractor = FeatureExtractor(args.config)
+    extractor.extract(args.input)
