@@ -1,29 +1,34 @@
 .PHONY: help build up down shell clean
-.PHONY: network data train export simulate gui
-.PHONY: pipeline metrics
+.PHONY: pipeline network data analyze train export
+.PHONY: simulate gui metrics test
+
+DOCKER_RUN = cd docker && docker-compose run --rm sumo
+PYTHON = python3
 
 help:
 	@echo "Level Crossing Control System"
 	@echo ""
-	@echo "Docker Commands:"
+	@echo "Docker:"
 	@echo "  make build       Build Docker image"
 	@echo "  make up          Start container"
 	@echo "  make down        Stop container"
 	@echo "  make shell       Open shell in container"
 	@echo ""
-	@echo "Pipeline Commands:"
+	@echo "Pipeline:"
 	@echo "  make pipeline    Run complete pipeline"
 	@echo "  make network     Generate SUMO network"
 	@echo "  make data        Collect training data"
+	@echo "  make analyze     Analyze thresholds"
 	@echo "  make train       Train ML model"
 	@echo "  make export      Export to Arduino"
 	@echo ""
-	@echo "Simulation Commands:"
-	@echo "  make simulate    Run simulation (no GUI)"
+	@echo "Simulation:"
+	@echo "  make simulate    Run simulation"
 	@echo "  make gui         Run simulation with GUI"
-	@echo "  make metrics     View metrics report"
+	@echo "  make test        Quick test (60s)"
 	@echo ""
-	@echo "Utility Commands:"
+	@echo "Output:"
+	@echo "  make metrics     View metrics summary"
 	@echo "  make clean       Clean all outputs"
 
 build:
@@ -36,37 +41,47 @@ down:
 	cd docker && docker-compose down
 
 shell:
-	cd docker && docker-compose run --rm sumo /bin/bash
+	$(DOCKER_RUN) /bin/bash
 
 pipeline:
-	cd docker && docker-compose run --rm sumo python3 scripts/pipeline.py --all
+	$(DOCKER_RUN) $(PYTHON) scripts/pipeline.py
 
 network:
-	cd docker && docker-compose run --rm sumo python3 simulation/network/generator.py
+	$(DOCKER_RUN) $(PYTHON) -c "from simulation.network.generator import NetworkGenerator; NetworkGenerator(mode='complete').generate()"
 
 data:
-	cd docker && docker-compose run --rm sumo python3 simulation/data/collector.py
+	$(DOCKER_RUN) $(PYTHON) simulation/data/collector.py
+
+analyze:
+	$(DOCKER_RUN) $(PYTHON) simulation/data/analyzer.py
 
 train:
-	cd docker && docker-compose run --rm sumo python3 simulation/ml/train_eta.py --collect --train
+	$(DOCKER_RUN) $(PYTHON) -c "from simulation.ml.trainer import ETATrainer; t = ETATrainer(); t.collect_data(250); t.train_model()"
 
 export:
-	cd docker && docker-compose run --rm sumo python3 simulation/ml/export.py --all
+	$(DOCKER_RUN) $(PYTHON) -c "from simulation.ml.exporter import ArduinoExporter; e = ArduinoExporter(); e.export_model(); e.export_config()"
 
 simulate:
-	cd docker && docker-compose run --rm sumo python3 scripts/run_simulation.py
+	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py
 
 gui:
-	xhost +local:docker
-	cd docker && docker-compose run --rm sumo python3 scripts/run_simulation.py --gui
+	@command -v xhost >/dev/null 2>&1 && xhost +local:docker || true
+	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py --gui
+
+test:
+	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py --duration 60
 
 metrics:
-	@echo "Metrics Summary:"
-	@cat outputs/metrics/summary.csv 2>/dev/null || echo "No metrics available. Run simulation first."
+	@if [ -f outputs/metrics/summary.csv ]; then \
+		echo "Metrics Summary:"; \
+		cat outputs/metrics/summary.csv; \
+	else \
+		echo "No metrics available. Run 'make simulate' first."; \
+	fi
 
 clean:
 	rm -rf outputs/data/* outputs/models/* outputs/metrics/*
-	rm -rf sumo/*.xml
-	rm -rf hardware/arduino/*.h
+	rm -rf sumo/complete/*.xml sumo/training/*.xml
+	rm -f hardware/*.h
 	rm -f config/thresholds.yaml
 	cd docker && docker-compose down -v

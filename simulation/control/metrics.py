@@ -1,33 +1,24 @@
-"""
-Metrics Tracker
-Comprehensive tracking of all performance metrics
-"""
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
-
+from simulation.utils.logger import Logger
 
 class MetricsTracker:
+    """Track comprehensive performance metrics"""
+    
     def __init__(self, output_dir="outputs/metrics"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Emission and fuel constants
-        self.fuel_rate_driving = 0.08  # L/s
-        self.fuel_rate_idling = 0.01   # L/s
-        self.fuel_rate_off = 0.0       # L/s
-        self.co2_per_liter = 2.31      # kg CO2 per liter fuel
+        self.fuel_rate_driving = 0.08
+        self.fuel_rate_idling = 0.01
+        self.fuel_rate_off = 0.0
+        self.co2_per_liter = 2.31
         
-        # Data storage
         self.vehicle_data = {}
         self.wait_times = []
-        self.travel_times = []
         self.comfort_scores = []
-        self.fuel_data = []
-        self.emission_data = []
     
     def track_vehicle(self, vid, t, speed, waiting, engine_off):
-        """Track individual vehicle metrics"""
         if vid not in self.vehicle_data:
             self.vehicle_data[vid] = {
                 'first_seen': t,
@@ -42,7 +33,6 @@ class MetricsTracker:
         
         veh = self.vehicle_data[vid]
         
-        # Track waiting
         if waiting and veh['wait_start'] is None:
             veh['wait_start'] = t
             veh['stops'] += 1
@@ -56,7 +46,6 @@ class MetricsTracker:
                 'time': t
             })
         
-        # Track engine off time
         if engine_off and veh['engine_off_start'] is None:
             veh['engine_off_start'] = t
         elif not engine_off and veh['engine_off_start'] is not None:
@@ -64,8 +53,7 @@ class MetricsTracker:
             veh['engine_off_time'] += engine_off_duration
             veh['engine_off_start'] = None
         
-        # Track fuel and emissions
-        dt = 0.1  # simulation step
+        dt = 0.1
         
         if engine_off:
             fuel_used = self.fuel_rate_off * dt
@@ -80,25 +68,19 @@ class MetricsTracker:
         veh['total_emissions'] += emissions
     
     def calculate_comfort(self, queue_length, avg_wait):
-        """Calculate comfort score based on queue and wait time"""
-        # Comfort decreases with queue length and wait time
         queue_penalty = min(queue_length / 20.0, 1.0)
         wait_penalty = min(avg_wait / 60.0, 1.0)
         
         comfort = 1.0 - (0.6 * queue_penalty + 0.4 * wait_penalty)
-        
         self.comfort_scores.append(comfort)
         
         return comfort
     
     def finalize(self):
-        """Calculate final metrics and save reports"""
-        print(f"[{self._timestamp()}] Calculating final metrics")
+        Logger.section("Calculating final metrics")
         
-        # Travel time savings (from rerouting)
         total_travel_time_saved = 0
         
-        # Wait time metrics
         if self.wait_times:
             df_wait = pd.DataFrame(self.wait_times)
             total_wait = df_wait['wait_duration'].sum()
@@ -107,19 +89,15 @@ class MetricsTracker:
         else:
             total_wait = avg_wait = max_wait = 0
         
-        # Fuel and emissions
         total_fuel = sum(v['total_fuel'] for v in self.vehicle_data.values())
         total_emissions = sum(v['total_emissions'] for v in self.vehicle_data.values())
         total_engine_off_time = sum(v['engine_off_time'] for v in self.vehicle_data.values())
         
-        # Fuel saved by engine-off
         fuel_saved = total_engine_off_time * (self.fuel_rate_idling - self.fuel_rate_off)
         emissions_saved = fuel_saved * self.co2_per_liter
         
-        # Comfort
         avg_comfort = sum(self.comfort_scores) / len(self.comfort_scores) if self.comfort_scores else 0
         
-        # Compile metrics
         metrics = {
             'travel_time_saved': total_travel_time_saved,
             'total_wait_time': total_wait,
@@ -134,22 +112,16 @@ class MetricsTracker:
             'total_stops': sum(v['stops'] for v in self.vehicle_data.values())
         }
         
-        # Save detailed reports
-        self._save_reports(metrics)
-        
-        # Print summary
+        self._save(metrics)
         self._print_summary(metrics)
         
         return metrics
     
-    def _save_reports(self, metrics):
-        """Save detailed metric reports"""
-        # Save wait times
+    def _save(self, metrics):
         if self.wait_times:
             df = pd.DataFrame(self.wait_times)
             df.to_csv(self.output_dir / 'wait_times.csv', index=False)
         
-        # Save vehicle data
         vehicle_records = []
         for vid, data in self.vehicle_data.items():
             vehicle_records.append({
@@ -165,15 +137,14 @@ class MetricsTracker:
             df = pd.DataFrame(vehicle_records)
             df.to_csv(self.output_dir / 'vehicle_metrics.csv', index=False)
         
-        # Save summary
         df = pd.DataFrame([metrics])
         df.to_csv(self.output_dir / 'summary.csv', index=False)
     
     def _print_summary(self, metrics):
-        """Print metrics summary"""
-        print(f"\n[{self._timestamp()}] Metrics Summary")
+        Logger.section("Metrics Summary")
+        
         print(f"\nTravel Time:")
-        print(f"  Total time saved: {metrics['travel_time_saved']:.1f}s")
+        print(f"  Total saved: {metrics['travel_time_saved']:.1f}s")
         
         print(f"\nWait Time:")
         print(f"  Total: {metrics['total_wait_time']:.1f}s")
@@ -183,19 +154,18 @@ class MetricsTracker:
         print(f"\nComfort:")
         print(f"  Score: {metrics['comfort_score']:.2f}")
         
-        print(f"\nFuel Consumption:")
+        print(f"\nFuel:")
         print(f"  Total: {metrics['total_fuel']:.2f}L")
         print(f"  Saved: {metrics['fuel_saved']:.2f}L")
-        print(f"  Reduction: {metrics['fuel_saved']/metrics['total_fuel']*100:.1f}%")
+        if metrics['total_fuel'] > 0:
+            print(f"  Reduction: {metrics['fuel_saved']/metrics['total_fuel']*100:.1f}%")
         
         print(f"\nEmissions:")
         print(f"  Total: {metrics['total_emissions']:.2f}kg CO2")
         print(f"  Saved: {metrics['emissions_saved']:.2f}kg CO2")
-        print(f"  Reduction: {metrics['emissions_saved']/metrics['total_emissions']*100:.1f}%")
+        if metrics['total_emissions'] > 0:
+            print(f"  Reduction: {metrics['emissions_saved']/metrics['total_emissions']*100:.1f}%")
         
         print(f"\nVehicles:")
         print(f"  Tracked: {metrics['vehicles_tracked']}")
         print(f"  Total stops: {metrics['total_stops']}")
-    
-    def _timestamp(self):
-        return datetime.now().strftime("%H:%M:%S")

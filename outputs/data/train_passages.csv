@@ -1,3 +1,0 @@
-train_id,passage_time_w,passage_time_e,avg_speed,min_speed,max_speed,length
-flow_trains.0,0.0,14.2,7.075000000000006,0.0,14.150000000000066,150.0
-flow_trains.1,0.0,14.199999999999989,7.075000000000006,0.0,14.150000000000066,150.0

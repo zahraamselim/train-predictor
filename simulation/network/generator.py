@@ -1,29 +1,86 @@
-"""
-SUMO Network Generator
-Creates railway level crossing network with intersections
-"""
 import os
-import sys
 from pathlib import Path
 
-
 class NetworkGenerator:
-    def __init__(self, output_dir="sumo"):
-        self.output_dir = Path(output_dir)
-        self.output_dir.mkdir(exist_ok=True)
+    """Generate SUMO networks for simulation or training"""
     
-    def generate(self):
-        """Generate complete SUMO network"""
-        self._write_nodes()
-        self._write_edges()
-        self._write_routes()
-        self._write_config()
-        self._write_viewsettings()
-        
+    def __init__(self, mode="complete", output_dir=None):
+        self.mode = mode
+        if output_dir:
+            self.output_dir = Path(output_dir)
+        else:
+            self.output_dir = Path("sumo") / mode
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+    
+    def generate(self, sensor_positions=None):
+        if self.mode == "training":
+            return self._generate_training(sensor_positions or [1130.0, 645.7, 322.9])
+        return self._generate_complete()
+    
+    def _generate_training(self, sensors):
+        self.sensor_positions = sensors
+        self._write_training_nodes()
+        self._write_training_edges()
+        self._write_training_routes()
+        self._write_training_config()
         return self._build_network()
     
-    def _write_nodes(self):
-        """Define network nodes"""
+    def _generate_complete(self):
+        self._write_complete_nodes()
+        self._write_complete_edges()
+        self._write_complete_routes()
+        self._write_complete_config()
+        self._write_viewsettings()
+        return self._build_network()
+    
+    def _write_training_nodes(self):
+        content = """<?xml version="1.0" encoding="UTF-8"?>
+<nodes>
+    <node id="track_start" x="-1500" y="0" type="priority"/>
+    <node id="crossing" x="0" y="0" type="rail_crossing"/>
+    <node id="track_end" x="500" y="0" type="priority"/>
+</nodes>
+"""
+        self._write_file("network.nod.xml", content)
+    
+    def _write_training_edges(self):
+        content = """<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <edge id="track_to_crossing" from="track_start" to="crossing" numLanes="1" speed="50.0" allow="rail"/>
+    <edge id="crossing_to_end" from="crossing" to="track_end" numLanes="1" speed="50.0" allow="rail"/>
+</edges>
+"""
+        self._write_file("network.edg.xml", content)
+    
+    def _write_training_routes(self):
+        content = """<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="train" vClass="rail" length="150" minSpeed="20.0" maxSpeed="45.0" 
+           speedFactor="1.0" speedDev="0.0" accel="1.0" decel="1.0" color="150,30,30"/>
+    <route id="train_route" edges="track_to_crossing crossing_to_end"/>
+</routes>
+"""
+        self._write_file("routes.rou.xml", content)
+    
+    def _write_training_config(self):
+        content = """<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <input>
+        <net-file value="network.net.xml"/>
+        <route-files value="routes.rou.xml"/>
+    </input>
+    <time>
+        <begin value="0"/>
+        <step-length value="0.1"/>
+    </time>
+    <processing>
+        <time-to-teleport value="-1"/>
+    </processing>
+</configuration>
+"""
+        self._write_file("training.sumocfg", content)
+    
+    def _write_complete_nodes(self):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <nodes>
     <node id="n_w" x="-500" y="100" type="priority"/>
@@ -31,8 +88,8 @@ class NetworkGenerator:
     <node id="s_w" x="-500" y="-100" type="priority"/>
     <node id="s_e" x="500" y="-100" type="priority"/>
     
-    <node id="rail_w" x="-700" y="0" type="priority"/>
-    <node id="rail_e" x="700" y="0" type="priority"/>
+    <node id="rail_w" x="-1500" y="0" type="priority"/>
+    <node id="rail_e" x="1500" y="0" type="priority"/>
     
     <node id="cross_w_n" x="-200" y="100" type="traffic_light"/>
     <node id="cross_w_rail" x="-200" y="0" type="rail_crossing"/>
@@ -45,8 +102,7 @@ class NetworkGenerator:
 """
         self._write_file("network.nod.xml", content)
     
-    def _write_edges(self):
-        """Define network edges"""
+    def _write_complete_edges(self):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <edges>
     <edge id="n_e_to_cross_e" from="n_e" to="cross_e_n" numLanes="2" speed="16.67"/>
@@ -82,8 +138,7 @@ class NetworkGenerator:
 """
         self._write_file("network.edg.xml", content)
     
-    def _write_routes(self):
-        """Define vehicle types and routes"""
+    def _write_complete_routes(self):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <routes>
     <vType id="car" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="100,150,200"/>
@@ -118,8 +173,7 @@ class NetworkGenerator:
 """
         self._write_file("routes.rou.xml", content)
     
-    def _write_config(self):
-        """Create SUMO configuration"""
+    def _write_complete_config(self):
         content = """<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <input>
@@ -139,7 +193,6 @@ class NetworkGenerator:
         self._write_file("simulation.sumocfg", content)
     
     def _write_viewsettings(self):
-        """Create view settings for GUI"""
         content = """<viewsettings>
     <scheme name="crossing_view">
         <background backgroundColor="34,139,34" showGrid="0"/>
@@ -152,29 +205,16 @@ class NetworkGenerator:
         self._write_file("viewsettings.xml", content)
     
     def _write_file(self, filename, content):
-        """Write file to output directory"""
         filepath = self.output_dir / filename
         with open(filepath, 'w') as f:
             f.write(content)
     
     def _build_network(self):
-        """Build SUMO network from XML files"""
         cmd = (
             f"netconvert "
             f"--node-files={self.output_dir}/network.nod.xml "
             f"--edge-files={self.output_dir}/network.edg.xml "
-            f"--output-file={self.output_dir}/network.net.xml"
+            f"--output-file={self.output_dir}/network.net.xml "
+            f"--no-warnings"
         )
-        
-        result = os.system(cmd)
-        return result == 0
-
-
-if __name__ == '__main__':
-    generator = NetworkGenerator()
-    if generator.generate():
-        print("Network generated successfully")
-        sys.exit(0)
-    else:
-        print("Network generation failed")
-        sys.exit(1)
+        return os.system(cmd) == 0
