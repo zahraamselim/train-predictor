@@ -1,449 +1,307 @@
-# Threshold Analysis Pipeline
+# Threshold Calculation Module
 
-## Overview
+## What This Does
 
-The threshold analysis pipeline determines optimal timing parameters for the level crossing control system. It collects empirical data from SUMO traffic simulations and calculates when to close gates, open gates, notify intersections, and where to place sensors.
+Calculates safe timing thresholds for railroad crossing control by measuring real traffic behavior.
 
-## Pipeline Components
+Questions answered:
 
-The threshold pipeline consists of four main modules:
+- When should gates close before a train arrives?
+- When can gates open after a train leaves?
+- When should traffic lights be warned?
+- Where should train sensors be placed?
 
-1. **Network Generator** - Creates SUMO network for data collection
-2. **Data Collector** - Runs simulation and collects timing measurements
-3. **Analyzer** - Calculates control thresholds from collected data
-4. **Exporter** - Converts thresholds to Arduino C header file
+## How It Works
 
-## 1. Network Generator (network_generator.py)
+1. Generate a simple road network with a railroad crossing
+2. Run traffic simulation and measure vehicle timing
+3. Calculate safe thresholds with safety margins
 
-### Purpose
+## Running
 
-Creates a simplified SUMO network optimized for collecting representative timing data. The network is simpler than the full simulation network because we only need to measure vehicle and train behaviors, not test complex scenarios.
+### Full Pipeline (1 hour simulation)
 
-### Network Structure
-
-**Intersections and Roads**:
-
-- Main road with two traffic light intersections at -300m and +300m
-- Rail crossing at position 0m (center)
-- North-south side roads connecting to crossing
-- All edges use realistic speeds (50-60 km/h for roads)
-
-**Traffic Flows**:
-
-- Main road: 400 vehicles/hour in each direction
-- Side roads: 150 vehicles/hour
-- Trucks: 80 vehicles/hour (mixed with cars)
-- Three train types: slow (25 m/s), medium (33 m/s), fast (39 m/s)
-- Trains every 3 minutes alternating between types
-
-### Output
-
-Network files for SUMO:
-
-- `thresholds.nod.xml` - Node definitions
-- `thresholds.edg.xml` - Edge definitions
-- `thresholds.net.xml` - Compiled network
-- `thresholds.rou.xml` - Traffic flows
-- `thresholds.sumocfg` - SUMO configuration
-
-### Configuration
-
-Controlled by `config/thresholds.yaml`:
-
-```yaml
-data_collection:
-  duration: 3600
-  train_period: 180
-  vehicle_flow:
-    main_road: 400
-    side_roads: 150
-    trucks: 80
+```bash
+python -m thresholds.network
+python -m thresholds.collector
+python -m thresholds.analyzer
 ```
 
-## 2. Data Collector (data_collector.py)
-
-### Purpose
-
-Runs SUMO simulation with TraCI and collects three types of timing measurements needed to calculate safe control thresholds.
-
-### Data Collection Process
-
-**Step 1: Vehicle Clearance Times**
-
-Measures how long vehicles take to clear the crossing area:
-
-- Tracks when vehicle enters crossing zone (within 150m)
-- Records entry speed and position
-- Tracks when vehicle exits crossing zone
-- Records exit speed and distance traveled
-- Filters invalid samples (< 0.5s or > 30s)
-
-**Step 2: Train Passage Times**
-
-Measures how long trains occupy the crossing:
-
-- Tracks train front position reaching crossing (y = 0)
-- Records arrival time and speed
-- Tracks train rear position clearing crossing (y = train_length)
-- Records departure time
-- Calculates passage time = departure - arrival
-- Stores speed statistics (avg, min, max, variance)
-
-**Step 3: Vehicle Travel Times**
-
-Measures how long vehicles take from intersection to crossing:
-
-- Detects vehicles passing intersection positions (-300m and +300m)
-- Records start time and position for each intersection
-- Tracks vehicle until it reaches crossing (within 50m)
-- Calculates travel time and average speed
-- Filters invalid samples (< 1.0s or > 60s)
-
-### Output Files
-
-Three CSV files saved to `outputs/data/`:
-
-**gate_clearance.csv**:
-
-```
-vehicle_id,clearance_time,enter_speed,exit_speed,distance
-car_0,3.2,15.8,16.2,52.3
-truck_5,4.8,12.1,13.5,63.7
-```
-
-**train_passages.csv**:
-
-```
-train_id,passage_time,avg_speed,min_speed,max_speed,speed_variance,length,arrival_time
-train_slow_0,6.0,25.1,24.8,25.3,0.02,150.0,180.0
-train_fast_1,3.9,38.5,38.2,38.7,0.03,150.0,540.0
-```
-
-**vehicle_travels.csv**:
-
-```
-vehicle_id,intersection,travel_time,distance,avg_speed
-car_12,west,18.2,285.3,15.7
-car_23,east,19.5,295.1,15.1
-```
-
-### Simulation Duration
-
-Default: 3600 seconds (1 hour)
-
-- Yields 100+ clearance samples
-- Yields 10+ train passages (20 trains expected at 180s period)
-- Yields 50+ travel time samples
-
-Quick mode: 300 seconds (5 minutes)
-
-- For testing only, insufficient data for production use
-
-## 3. Analyzer (analyzer.py)
-
-### Purpose
-
-Processes collected data and calculates all control system thresholds using statistical analysis and safety margins.
-
-### Calculation Methods
-
-**Gate Closure Threshold**
-
-Determines when gates must close before train arrives:
-
-```python
-if samples >= 100:
-    threshold = clearance_95th_percentile + margin_close
-else:
-    threshold = clearance_max + margin_close
-```
-
-- Uses 95th percentile with sufficient data (ensures 95% of vehicles clear)
-- Falls back to maximum observed time if insufficient samples
-- Adds safety margin (default 2.0 seconds)
-- Example: 95th percentile = 4.8s, margin = 2.0s → threshold = 6.8s
-
-**Gate Opening Threshold**
-
-Determines when gates can open after train clears:
-
-```python
-threshold = margin_open
-```
-
-- Simple safety margin after train rear clears crossing
-- Default 3.0 seconds
-- Conservative approach since train passage time is deterministic
-
-**Intersection Notification Time**
-
-Determines when to notify upstream intersections:
-
-```python
-if samples >= 50:
-    travel_time = travel_95th_percentile
-else:
-    travel_time = travel_max
-
-notification = travel_time + driver_reaction + closure_threshold
-```
-
-- Uses 95th percentile travel time with sufficient data
-- Accounts for driver reaction time (default 2.5s)
-- Includes gate closure time
-- Example: travel = 18.2s, reaction = 2.5s, closure = 6.8s → notify = 27.5s
-
-**Sensor Positions**
-
-Calculates optimal sensor placement before crossing:
-
-```python
-max_speed = max(observed_max, ml_max_speed)
-safety_factor = 1.3
-detection_distance = notification_time * max_speed * safety_factor
-
-sensor_0 = detection_distance * 3.0
-sensor_1 = detection_distance * 1.8
-sensor_2 = detection_distance * 0.9
-```
-
-- Uses maximum speed from observations or ML training data
-- Applies 1.3x safety factor for speed variations
-- Three sensors for ETA/ETD calculation accuracy
-- Scales to practical limits (300m - 1500m per sensor)
-
-### Data Quality Checks
-
-Minimum recommended samples:
-
-- Clearance: 100 samples (statistical reliability of 95th percentile)
-- Trains: 10 passages (covers all train types multiple times)
-- Travel: 50 samples (accounts for traffic variations)
-
-Warnings issued if insufficient data collected.
-
-### Output
-
-Saves to `config/thresholds_calculated.yaml`:
-
-```yaml
-closure_before_eta: 6.8
-opening_after_etd: 3.0
-notification_time: 27.5
-sensor_positions: [1245.0, 747.0, 373.5]
-max_train_speed: 38.89
-engine_off_threshold: 5.0
-
-statistics:
-  clearance_samples: 156
-  train_samples: 18
-  travel_samples: 89
-  clearance_mean: 3.42
-  clearance_95th: 4.82
-  clearance_max: 6.15
-  passage_mean: 4.15
-  passage_max: 6.02
-  travel_mean: 18.31
-  travel_95th: 21.45
-  observed_max_speed: 38.67
-  ml_max_speed: 38.89
-  used_max_speed: 38.89
-```
-
-## 4. Exporter (exporter.py)
-
-### Purpose
-
-Converts calculated thresholds into a C header file for Arduino deployment.
-
-### Generated Header
-
-Creates `outputs/arduino/thresholds_config.h`:
-
-```c
-#ifndef THRESHOLDS_CONFIG_H
-#define THRESHOLDS_CONFIG_H
-
-#define SENSOR_0_POS 1245.00f
-#define SENSOR_1_POS 747.00f
-#define SENSOR_2_POS 373.50f
-
-#define CLOSURE_THRESHOLD 6.80f
-#define OPENING_THRESHOLD 3.00f
-#define NOTIFICATION_THRESHOLD 27.50f
-
-#define ENGINE_OFF_THRESHOLD 5.00f
-#define MAX_TRAIN_SPEED 38.89f
-
-#endif
-```
-
-### Usage in Arduino
-
-```cpp
-#include "thresholds_config.h"
-
-if (time_until_eta <= CLOSURE_THRESHOLD) {
-    closeGates();
-}
-
-if (time_since_etd >= OPENING_THRESHOLD) {
-    openGates();
-}
-```
-
-## Running the Pipeline
-
-### Full Pipeline (1 hour)
+Or using make:
 
 ```bash
 make th-pipeline
 ```
 
-Executes all steps:
-
-1. Network generation (1 second)
-2. Data collection (3600 seconds)
-3. Threshold analysis (1 second)
-4. Arduino export (1 second)
-
-Expected data quality: 100+ clearances, 15+ trains, 80+ travels
-
-### Quick Pipeline (5 minutes)
+### Quick Test (5 minutes)
 
 ```bash
-make th-pipeline-quick
+python -m thresholds.network
+python -m thresholds.collector --duration 300
+python -m thresholds.analyzer
 ```
 
-Uses 300 second simulation for testing.
-Warning: Insufficient data for production use.
+Note: Short simulations give less accurate results (fewer samples).
 
-### Individual Steps
+## What Gets Measured
 
-```bash
-make th-network    # Generate network
-make th-collect    # Collect data (1 hour)
-make th-analyze    # Analyze existing data
-make th-export     # Export to Arduino header
+### Vehicle Clearance Time
+
+How long does a car take to cross the railroad tracks?
+
 ```
+Car enters crossing area (within 150m) -> Car exits -> Calculate time
+```
+
+Purpose: Determines how long gates must stay closed to let cars clear.
+
+### Vehicle Travel Time
+
+How long does a car take from traffic light to crossing?
+
+```
+Car passes intersection (-300m or +300m) -> Car reaches crossing -> Calculate time
+```
+
+Purpose: Determines how much advance warning traffic lights need.
+
+## Output Files
+
+### Data (outputs/data/)
+
+**clearances.csv**
+
+```
+vehicle_id,clearance_time,speed
+car_0,3.2,15.8
+car_1,4.1,14.2
+```
+
+**travels.csv**
+
+```
+vehicle_id,travel_time
+car_5,18.2
+car_8,19.5
+```
+
+### Results (outputs/results/thresholds.yaml)
+
+```yaml
+closure_before_eta: 6.8
+opening_after_etd: 3.0
+notification_time: 27.5
+sensor_0: 1245.0
+sensor_1: 747.0
+sensor_2: 373.0
+max_train_speed: 39.0
+```
+
+### Plots (outputs/plots/)
+
+**thresholds_analysis.png** - Main analysis with 6 panels:
+
+- Vehicle clearance time histogram
+- Travel time histogram
+- Clearance time vs vehicle speed
+- Sensor positions bar chart
+- Clearance time cumulative distribution
+- Summary statistics
+
+## Understanding the Calculations
+
+### Gate Closure Threshold
+
+Formula:
+
+```
+95th percentile clearance time + safety margin
+```
+
+Example:
+
+- 95% of cars clear in 4.8 seconds
+- Safety margin: 2.0 seconds
+- Result: Close gates 6.8s before train
+
+Why: Ensures 95% of cars can safely clear. Safety margin handles slower drivers.
+
+### Gate Opening Threshold
+
+Formula:
+
+```
+safety margin (3.0 seconds)
+```
+
+Example:
+
+- Train leaves
+- Wait 3.0 seconds
+- Open gates
+
+Why: Simple and conservative. Accounts for sensor delays.
+
+### Notification Threshold
+
+Formula:
+
+```
+95th percentile travel time + driver reaction + closure time
+```
+
+Example:
+
+- Travel from intersection: 18.2s
+- Driver sees signal, reacts: 2.5s
+- Gates close: 6.8s
+- Total: 27.5s warning needed
+
+Why: Traffic lights need time to stop cars before they reach the crossing approach.
+
+### Sensor Positions
+
+Formula:
+
+```
+detection_distance = notification_time × max_speed × 1.3
+sensor_0 = detection_distance × 3.0 (capped at 1500m)
+sensor_1 = detection_distance × 1.8 (capped at 1000m)
+sensor_2 = detection_distance × 0.9 (min 300m)
+```
+
+Example:
+
+- Notification: 27.5s
+- Max speed: 39 m/s
+- Detection distance: 27.5 × 39 × 1.3 = 1394m
+- Sensor 0: 1394 × 3.0 = 4182m (capped at 1500m)
+- Sensor 1: 1394 × 1.8 = 2509m (capped at 1000m)
+- Sensor 2: 1394 × 0.9 = 1255m (min 300m)
+
+Why: Three sensors improve ETA/ETD prediction accuracy. Spaced logarithmically.
+
+Note: Max train speed (39 m/s) is taken from the network configuration (train_fast maxSpeed).
 
 ## Configuration
 
-Edit `config/thresholds.yaml`:
+Edit `thresholds/config.yaml`:
 
 ```yaml
 data_collection:
-  duration: 3600 # Simulation length (increase for more data)
-  step_length: 0.1 # Simulation time step
-  train_period: 180 # Train frequency (seconds)
-
-  train:
-    length: 150.0 # Train length (meters)
-    min_speed: 25.0 # Slowest trains (m/s)
-    typical_speed: 33.33 # Average speed (m/s)
-    max_speed: 38.89 # Fastest trains (m/s)
-
-  vehicle:
-    max_speed: 20.0 # Vehicle speed limit (m/s)
-    accel: 2.6 # Acceleration (m/s²)
-    decel: 4.5 # Deceleration (m/s²)
-
-  vehicle_flow:
-    main_road: 400 # Main road traffic (veh/hour)
-    side_roads: 150 # Side road traffic (veh/hour)
-    trucks: 80 # Truck traffic (veh/hour)
+  duration: 3600
 
 safety:
-  margin_close: 2.0 # Extra time before closing (seconds)
-  margin_open: 3.0 # Extra time before opening (seconds)
-  driver_reaction: 2.5 # Driver reaction time (seconds)
-  engine_off_threshold: 5.0 # Min wait for engine shutoff (seconds)
+  margin_close: 2.0
+  margin_open: 3.0
+  driver_reaction: 2.5
 ```
 
-## Integration with ML Pipeline
+## Expected Results
 
-The analyzer automatically loads train parameters from ML training if available:
+### Good Data Quality
 
-```python
-train_params_file = Path('config/train_params.yaml')
-if train_params_file.exists():
-    # Use ML-derived max speed and acceleration
-    params = yaml.safe_load(train_params_file)
-else:
-    # Use config defaults
-    params = config['data_collection']['train']
-```
+- Clearances: 100+ samples
+- Travels: 50+ samples
 
-This ensures sensor positions account for the fastest trains seen during ML training.
+### Typical Values
+
+- Closure threshold: 6-8 seconds
+- Opening threshold: 3 seconds
+- Notification: 25-30 seconds
+- Sensor 0: 1000-1500m
+- Sensor 1: 600-1000m
+- Sensor 2: 300-500m
+
+## Experiments
+
+### Experiment 1: Effect of Safety Margins
+
+Question: How do safety margins affect gate closure time?
+
+Method:
+
+1. Run baseline: `margin_close: 2.0`
+2. Run conservative: `margin_close: 4.0`
+3. Run aggressive: `margin_close: 1.0`
+4. Compare closure thresholds
+
+Expected: Higher margins = earlier closure = safer but more traffic delay
+
+### Experiment 2: Traffic Volume Impact
+
+Question: Does heavy traffic change clearance times?
+
+Method:
+
+1. Baseline: 400 vehicles/hour
+2. Light traffic: Edit routes, 200 vehicles/hour
+3. Heavy traffic: 800 vehicles/hour
+4. Compare 95th percentile clearance times
+
+Expected: Heavy traffic = longer clearance (cars queued at crossing)
+
+### Experiment 3: Short vs Long Simulation
+
+Question: How much data is needed for accurate results?
+
+Method:
+
+1. Run 5 minutes (300s)
+2. Run 30 minutes (1800s)
+3. Run 1 hour (3600s)
+4. Compare sample counts and threshold stability
+
+Expected: Longer runs = more samples = more accurate 95th percentiles
 
 ## Troubleshooting
 
-### No data collected
+**No data collected**
 
-**Problem**: CSV files are empty
-**Cause**: Network error or simulation crash
-**Solution**: Check `thresholds.net.xml` exists, verify SUMO installation
+- Check SUMO installation: `sumo --version`
+- Verify network files exist: `ls thresholds.net.xml`
 
-### Insufficient samples
+**Low sample counts**
 
-**Problem**: < 100 clearances, < 10 trains, or < 50 travels
-**Cause**: Simulation too short or low traffic flow
-**Solution**:
+- Increase simulation duration to 3600s
+- Check traffic is flowing (not gridlocked)
 
-- Increase `duration` to 7200 (2 hours)
-- Increase `vehicle_flow` rates
-- Decrease `train_period` to 120 (more frequent trains)
+**Very high clearance times**
 
-### Very high clearance times
+- Normal if traffic is congested
+- Thresholds will adjust automatically
 
-**Problem**: 95th percentile > 10 seconds
-**Cause**: Traffic congestion or very slow vehicles
-**Solution**: Expected behavior, thresholds will adjust appropriately
+**Sensors exceed 1500m**
 
-### Sensors exceed practical limits
+- Automatically capped at practical limits
+- Consider slower train speeds in config
 
-**Problem**: Sensor positions > 1500m
-**Cause**: Very fast trains or long notification times
-**Solution**: Automatically scaled to 1500m maximum
-
-### Low data quality warnings
-
-**Problem**: Analyzer reports insufficient samples
-**Cause**: Short simulation or low traffic
-**Solution**: Run full 1-hour simulation with default traffic flows
-
-## File Dependencies
+## File Structure
 
 ```
-thresholds.yaml
-    │
-    ├─> network_generator.py
-    │       │
-    │       └─> thresholds.net.xml, thresholds.rou.xml
-    │               │
-    │               └─> data_collector.py
-    │                       │
-    │                       ├─> gate_clearance.csv
-    │                       ├─> train_passages.csv
-    │                       └─> vehicle_travels.csv
-    │                               │
-    │                               └─> analyzer.py
-    │                                       │
-    │                                       └─> thresholds_calculated.yaml
-    │                                               │
-    │                                               └─> exporter.py
-    │                                                       │
-    │                                                       └─> thresholds_config.h
+thresholds/
+├── __init__.py
+├── config.yaml
+├── network.py
+├── collector.py
+└── analyzer.py
+
+outputs/
+├── data/
+│   ├── clearances.csv
+│   └── travels.csv
+├── results/
+│   └── thresholds.yaml
+└── plots/
+    └── thresholds_analysis.png
 ```
 
-## Summary
+## Integration
 
-The threshold analysis pipeline provides data-driven control parameters:
+These thresholds are used by:
 
-1. Collects 100+ vehicle clearance measurements to determine safe gate closure timing
-2. Measures 10+ train passages to validate gate opening timing
-3. Records 50+ travel times to calculate intersection notification timing
-4. Calculates sensor positions based on maximum observed train speeds
-5. Exports all parameters as Arduino-compatible C header file
+- Arduino firmware for gate control
+- Traffic light coordination logic
+- ETA/ETD prediction models
 
-These empirically-derived thresholds ensure the crossing control system operates safely and efficiently for the specific train speeds and traffic patterns in your deployment scenario.
+The analyzer uses the maximum configured train speed (39 m/s from train_fast) for sensor placement calculations.

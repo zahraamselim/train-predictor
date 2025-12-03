@@ -1,0 +1,10 @@
+closure_before_eta: 16.0
+max_train_speed: 39.0
+notification_time: 40.549999999999955
+opening_after_etd: 3.0
+samples:
+  clearances: 400
+  travels: 400
+sensor_0: 1500.0
+sensor_1: 1000.0
+sensor_2: 1850.296499999998
