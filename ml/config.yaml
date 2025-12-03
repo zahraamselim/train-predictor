@@ -1,0 +1,22 @@
+network:
+  start_x: -2000
+  end_x: 2000
+  max_speed: 50.0
+  track_length: 4000
+
+sensors:
+  s0: 1500
+  s1: 2100
+  s2: 2550
+  crossing: 3000
+
+training:
+  n_samples: 1000
+  sim_duration: 300
+  random_seed: 42
+  train_params:
+    lengths: [100, 150, 200, 250]
+
+model:
+  type: linear_regression
+  test_size: 0.2

@@ -1,478 +1,205 @@
-# Machine Learning Pipeline Documentation
+# Machine Learning Pipeline
 
 ## Overview
 
-The ML pipeline trains artificial intelligence models to predict both when a train will arrive at a railroad crossing (ETA) and when it will fully clear the crossing (ETD). These predictions allow the crossing gates to close at exactly the right time and open as soon as safe, minimizing wait times for cars while maintaining safety.
+This pipeline trains AI models to predict train arrival (ETA) and departure (ETD) times at railroad crossings. The system learns from thousands of simulated train examples to make predictions more accurate than simple physics formulas.
+
+## Why Machine Learning
+
+Simple physics predicts: `time = distance / speed`
+
+But real trains:
+
+- Accelerate and decelerate
+- Have varying lengths
+- Behave unpredictably
+
+Machine learning learns these patterns from data.
 
 ## Pipeline Components
 
-The ML pipeline consists of five main modules that work together in sequence:
+### 1. Data Preparation (`data.py`)
 
-1. **Data Generator** - Creates training data
-2. **Feature Extractor** - Processes raw data into useful features
-3. **Model Trainer** - Trains the prediction models
-4. **Model Exporter** - Converts models for embedded hardware
-5. **Model Evaluator** - Measures model performance
+Handles data generation, feature extraction, and visualization in one module.
 
-## 1. Data Generator (data_generator.py)
+**Data Generation:**
 
-### Purpose
+- Simulates 1000 trains using SUMO
+- Random speeds: 15-45 m/s
+- Random accelerations: 0.5-2.0 m/s²
+- Random lengths: 100, 150, 200, 250 meters
+- Records position, speed, acceleration every 0.1 seconds
 
-Generates synthetic train trajectory data using SUMO traffic simulator. This creates thousands of different train scenarios with varying speeds, accelerations, and lengths to train the models on diverse situations.
+**Feature Extraction:**
 
-### How It Works
+- 3 sensors before crossing (1500m, 2100m, 2550m)
+- Crossing at 3000m
+- Extracts 8 features per train:
+  - distance_remaining: Meters from last sensor to crossing
+  - train_length: Length in meters
+  - last_speed: Speed at last sensor
+  - speed_change: Speed difference between first and last sensor
+  - time_01: Time between sensors 0 and 1
+  - time_12: Time between sensors 1 and 2
+  - avg_speed_01: Average speed between sensors 0-1
+  - avg_speed_12: Average speed between sensors 1-2
 
-**Step 1: Network Creation**
+**Visualization:**
+Creates 4 plot files:
 
-- Creates a simple straight railroad track in SUMO
-- Track runs from -2000m to +2000m (4km total)
-- Maximum allowed speed: 50 m/s (180 km/h)
+- train_trajectories.png: Sample train movements
+- feature_distributions.png: Feature histograms
+- feature_correlations.png: Feature-ETA relationships
+- physics_comparison.png: ML vs simple physics
 
-**Step 2: Parameter Generation**
+**Outputs:**
 
-- Creates 2000 different train configurations
-- Each train has random but realistic parameters:
-  - **Speed**: Fast (35-45 m/s), Medium (25-35 m/s), or Slow (15-25 m/s)
-  - **Acceleration**: 0.3-2.5 m/s²
-  - **Deceleration**: 0.3-2.5 m/s²
-  - **Length**: 100m, 150m, 200m, or 250m
-  - **Speed factor**: 0.9-1.1 (variation in maintaining speed)
+- `outputs/data/raw_trajectories.csv`: Raw simulation data
+- `outputs/data/features.csv`: Extracted features
+- `outputs/plots/`: Visualization images
 
-**Step 3: Simulation Execution**
+### 2. Model Training (`model.py`)
 
-- Runs each train configuration through SUMO
-- Records train position, speed, acceleration, and length every 0.1 seconds
-- Duration: 300 seconds per simulation
-- Generates temporary XML files for SUMO configuration
-- Cleans up temporary files after each run
+Trains and evaluates Linear Regression models for ETA and ETD.
 
-**Step 4: Data Parsing**
-
-- Extracts vehicle data from SUMO's XML output
-- Creates structured dataset with columns:
-  - `time`: Timestamp in seconds
-  - `pos`: Position along track in meters
-  - `speed`: Current speed in m/s
-  - `acceleration`: Current acceleration in m/s²
-  - `length`: Train length in meters
-  - `run_id`: Unique identifier for this simulation
-
-### Output
-
-- File: `outputs/data/raw_trajectories.csv`
-- Contains approximately 1.7M data points (2000 trains × ~850 time steps)
-- Each row represents one time step for one train
-
-### Configuration
-
-Controlled by `config/ml.yaml`:
-
-```yaml
-training:
-  n_samples: 2000
-  sim_duration: 300
-  random_seed: 42
-```
-
-## 2. Feature Extractor (feature_extractor.py)
-
-### Purpose
-
-Transforms raw trajectory data into meaningful features that the machine learning models can learn from. Each train's journey is converted into a single row of calculated features.
-
-### Sensor System
-
-The system uses 3 sensors before the crossing plus the crossing itself:
-
-- **Sensor 0 (s0)**: 1870m before crossing
-- **Sensor 1 (s1)**: 2355m before crossing
-- **Sensor 2 (s2)**: 2678m before crossing
-- **Crossing**: 3000m mark
-
-### Feature Calculation Process
-
-**Step 1: Sensor Trigger Detection**
-For each train trajectory:
-
-- Identifies the exact moment each sensor is triggered
-- Records time, speed, and acceleration at each trigger point
-- Detects when train front reaches crossing
-- Detects when train rear clears crossing (front position + train length)
-
-**Step 2: Time-Based Features**
-
-- `dt_interval_0`: Time between sensor 0 and sensor 1
-- `dt_interval_1`: Time between sensor 1 and sensor 2
-- `time_variance`: How consistent the train's timing is
-
-**Step 3: Speed-Based Features**
-
-- `last_speed`: Speed at the last sensor before crossing
-- `last_accel`: Acceleration at the last sensor
-- `avg_speed_0`: Average speed between sensors 0 and 1
-- `avg_speed_1`: Average speed between sensors 1 and 2
-- `avg_speed_overall`: Average of all segment speeds
-- `speed_trend`: Whether train is speeding up or slowing down
-- `speed_variance`: How much speed varies
-
-**Step 4: Distance and Length Features**
-
-- `distance_remaining`: Meters from last sensor to crossing
-- `train_length`: Length of the train in meters
-- `length_speed_ratio`: Train length divided by current speed
-- `distance_length_ratio`: Distance remaining divided by train length
-
-**Step 5: Target Variables**
-
-- `eta_actual`: True time from last sensor to crossing front arrival
-- `etd_actual`: True time from last sensor to crossing rear clearance
-- `eta_physics`: Simple physics calculation for ETA baseline
-- `etd_physics`: Simple physics calculation for ETD baseline
-
-### Physics Baseline Calculation
-
-**ETA Physics**: Uses kinematic equation `d = v*t + 0.5*a*t²` to solve for time
-
-**ETD Physics**: Calculates time for train length to pass at crossing:
-
-- First calculates ETA to get time to crossing
-- Estimates speed at crossing: `speed_at_crossing = last_speed + last_accel * eta`
-- Adds time for length to pass: `etd = eta + train_length / speed_at_crossing`
-
-### Output
-
-- File: `outputs/data/features.csv`
-- 2000 rows (one per train)
-- 14 feature columns + 4 target columns + 1 ID column
-
-### Example Feature Row
+**Linear Regression:**
+Finds the best formula:
 
 ```
-distance_remaining: 322.87m
-train_length: 200m
-last_speed: 32.45 m/s
-last_accel: 0.15 m/s²
-speed_trend: -0.03
-length_speed_ratio: 6.16
-distance_length_ratio: 1.61
-eta_actual: 10.1s
-etd_actual: 16.3s
+ETA = a × distance + b × speed + c × length + ... + constant
 ```
 
-## 3. Model Trainer (model_trainer.py)
+**Training Process:**
 
-### Purpose
+1. Split data: 80% training, 20% testing
+2. Train model (learns coefficients)
+3. Evaluate on test data
+4. Generate performance plots
+5. Save model and metrics
 
-Trains Random Forest models to predict both ETA and ETD based on sensor data. Random forests combine multiple decision trees to reduce overfitting and improve generalization.
+**Performance Metrics:**
 
-### Algorithm: Random Forest Regressor
+- MAE (Mean Absolute Error): Average prediction error in seconds
+- R² Score: How well model explains data (0-1, higher better)
+- Improvement: Percentage better than physics baseline
 
-A random forest consists of multiple decision trees, each trained on a slightly different subset of the data. The final prediction is the average of all trees:
+**Outputs:**
 
-```
-Tree 1 predicts: 9.8s
-Tree 2 predicts: 10.1s
-Tree 3 predicts: 9.9s
-...
-Tree 10 predicts: 10.0s
+- `outputs/models/eta_model.pkl`: ETA model
+- `outputs/models/etd_model.pkl`: ETD model
+- `outputs/plots/eta_training.png`: ETA performance plots
+- `outputs/plots/etd_training.png`: ETD performance plots
+- `outputs/results/evaluation_results.json`: Metrics summary
 
-Final prediction: 9.95s (average)
-```
+## Running the Pipeline
 
-### Training Process
+### Full pipeline (1000 samples):
 
-**Step 1: Data Splitting**
-
-- **Training set (70%)**: 1400 samples - Used to build the models
-- **Validation set (15%)**: 300 samples - Used to choose best hyperparameters
-- **Test set (15%)**: 300 samples - Used to evaluate final performance
-
-**Step 2: Hyperparameter Search**
-
-Both ETA and ETD models search over:
-
-- Number of trees: 5, 10, 15
-- Maximum depth: 4-9
-- Minimum samples per leaf: 5, 8, 10
-
-The search finds the combination that minimizes validation error.
-
-**Step 3: Model Training**
-
-For each model:
-
-- Trains Random Forest on training data
-- Each tree is built on a bootstrap sample (random subset with replacement)
-- Trees are grown to specified depth with regularization constraints
-- Uses all CPU cores for parallel training (n_jobs=-1)
-
-**Step 4: Evaluation**
-
-Calculates performance metrics:
-
-- **MAE (Mean Absolute Error)**: Average prediction error in seconds
-- **RMSE (Root Mean Square Error)**: Emphasizes large errors
-- **R² Score**: How well model explains variance (0 to 1, higher is better)
-- **Improvement over physics**: Percentage better than simple physics baseline
-
-### Output
-
-Two model files:
-
-- `outputs/models/eta_model.pkl` - ETA prediction model
-- `outputs/models/etd_model.pkl` - ETD prediction model
-
-Each contains:
-
-- Trained Random Forest model
-- List of feature names
-- Performance metrics
-- Training configuration
-
-### Expected Performance
-
-With 2000 training samples:
-
-**ETA Model**:
-
-```
-Training MAE: ~0.02s
-Test MAE: ~0.04s
-Test R²: >0.97
-Improvement over physics: 5-15%
+```bash
+python -m ml.data
+python -m ml.model
 ```
 
-**ETD Model**:
+Or using make:
 
-```
-Training MAE: ~0.05s
-Test MAE: ~0.07s
-Test R²: >0.96
-Improvement over physics: 5-20%
+```bash
+make ml-data
+make ml-train
 ```
 
-### Why Random Forests?
+### Quick test (50 samples):
 
-**Advantages over single decision trees**:
-
-- Reduced overfitting through ensemble averaging
-- Better generalization to unseen data
-- More stable predictions
-- Can capture complex non-linear relationships
-
-**Trade-offs**:
-
-- Larger model size (multiple trees)
-- Slightly slower prediction (must evaluate all trees)
-- Still deployable on Arduino with 5-15 trees
-
-## 4. Model Exporter (model_exporter.py)
-
-### Purpose
-
-Converts the trained Random Forest models into C code that can run on an Arduino or other embedded system. This allows the crossing control system to make predictions without needing a full computer.
-
-### Conversion Process
-
-**Step 1: Load Models**
-
-- Reads both ETA and ETD models from pickle files
-- Extracts all decision trees from each forest
-- Gets feature names and tree structures
-
-**Step 2: Generate C Code for Each Tree**
-
-Converts each tree in the forest to C functions. For a 3-tree forest:
-
-```c
-float predictETA_tree0(float features[14]) {
-    if (features[2] <= 30.5000f) {
-        if (features[0] <= 300.0000f) {
-            return 9.8000f;
-        } else {
-            return 10.5000f;
-        }
-    } else {
-        return 9.2000f;
-    }
-}
-
-float predictETA_tree1(float features[14]) {
-    // Similar structure...
-}
-
-float predictETA_tree2(float features[14]) {
-    // Similar structure...
-}
+```bash
+python -m ml.data --samples 50
+python -m ml.model
 ```
 
-**Step 3: Generate Ensemble Function**
+### Custom configuration:
 
-Creates wrapper function that averages all tree predictions:
-
-```c
-float predictETA(float features[14]) {
-    float sum = 0.0f;
-    sum += predictETA_tree0(features);
-    sum += predictETA_tree1(features);
-    sum += predictETA_tree2(features);
-    return sum / 3.0f;
-}
+```bash
+python -m ml.data --config custom_config.yaml --samples 500
+python -m ml.model --config custom_config.yaml
 ```
 
-**Step 4: Add Documentation**
+## Expected Results
 
-Includes header comments explaining:
+**ETA Model:**
 
-- What each feature index represents
-- Number of trees in forest
-- How to call the functions
+- Test error: 0.4-0.5 seconds
+- R² score: 0.85-0.90
+- Improvement over physics: 10-15%
 
-### Output
+**ETD Model:**
 
-- File: `outputs/models/train_models.h`
-- C header file ready for Arduino
-- Contains both ETA and ETD prediction functions
-- Typical size: 5-15 trees per model, 20-50 nodes per tree
+- Test error: 0.5-0.6 seconds
+- R² score: 0.82-0.88
+- Improvement over physics: 8-12%
 
-### Usage in Arduino
+## Understanding the Outputs
 
-```cpp
-#include "train_models.h"
+### Trajectory Plots
 
-float features[14] = {
-    322.87,  // distance_remaining
-    200.0,   // train_length
-    32.45,   // last_speed
-    0.15,    // last_accel
-    -0.03,   // speed_trend
-    0.02,    // speed_variance
-    0.15,    // time_variance
-    32.1,    // avg_speed_overall
-    6.16,    // length_speed_ratio
-    1.61,    // distance_length_ratio
-    15.2,    // dt_interval_0
-    9.8,     // dt_interval_1
-    32.0,    // avg_speed_0
-    32.5     // avg_speed_1
-};
+Shows 6 sample trains moving through sensors. Each subplot shows:
 
-float eta = predictETA(features);  // Time until front arrives
-float etd = predictETD(features);  // Time until rear clears
-```
+- Position over time
+- Speed over time
+- Acceleration over time
+- Speed vs position
 
-### Why This Matters
+Use these to verify trains behave realistically.
 
-**Advantages**:
+### Feature Distribution Plots
 
-- Arduino has limited memory (32 KB on typical boards)
-- No need for Python or ML libraries on hardware
-- Predictions run in milliseconds
-- No network connection required
-- Both predictions available with single feature computation
+Histograms of all 8 features plus targets. Look for:
 
-**Limitations**:
+- Wide spread (good variety)
+- Bell-shaped curves (normal distribution)
+- No unusual spikes or gaps
 
-- Models cannot be retrained on Arduino
-- New models require regenerating the C code
-- Forest size limited by Arduino memory (typically 5-15 trees feasible)
+### Feature Correlation Plots
 
-## 5. Model Evaluator (evaluator.py)
+Shows how each feature relates to ETA. Correlation values:
 
-### Purpose
+- +1.0: Perfect positive correlation
+- 0.0: No relationship
+- -1.0: Perfect negative correlation
 
-Provides comprehensive analysis of both trained models' performance and saves detailed metrics for documentation and comparison.
+Examples:
 
-### Evaluation Metrics
+- last_speed: negative correlation (higher speed = shorter time)
+- distance_remaining: positive correlation (more distance = more time)
 
-**Dataset Statistics**:
+### Physics Comparison Plots
 
-- Number of training samples
-- Average, standard deviation, min, and max for both ETA and ETD
-- Shows the range of scenarios the models learned from
+Compares simple physics to actual times. Spread from diagonal line shows physics error (~0.5s).
 
-**Performance Metrics (for each model)**:
+### Training Performance Plots
 
-- **Test MAE**: Error on unseen data
-- **Test RMSE**: Emphasizes large prediction errors
-- **Test R²**: Goodness of fit (closer to 1.0 is better)
+6 subplots per model:
 
-**Baseline Comparison**:
+1. Training predictions vs actual
+2. Test predictions vs actual (most important)
+3. Error distribution (should be bell-shaped)
+4. Feature importance (coefficient sizes)
+5. Performance comparison (ML vs physics)
+6. Residuals (should be random scatter)
 
-- Physics-based prediction error
-- Percentage improvement of ML over physics
+Good signs:
 
-**Model Architecture**:
+- Points near diagonal in prediction plots
+- Bell-shaped error distribution
+- Test performance close to training
+- Random residuals
 
-- Number of input features (14)
-- Model type (RandomForestRegressor)
-- Number of trees in each forest
+Bad signs:
 
-### Output Files
+- Points far from diagonal
+- Test much worse than training (overfitting)
+- Patterns in residuals (missing information)
 
-**1. JSON Results** (`outputs/results/evaluation_results.json`)
+## Configuration
 
-```json
-{
-  "eta_metrics": {
-    "test_mae": 0.042,
-    "test_rmse": 0.068,
-    "test_r2": 0.976,
-    "physics_baseline_mae": 0.057,
-    "improvement_over_physics": 26.3
-  },
-  "etd_metrics": {
-    "test_mae": 0.071,
-    "test_rmse": 0.145,
-    "test_r2": 0.967,
-    "physics_baseline_mae": 0.086,
-    "improvement_over_physics": 17.4
-  },
-  "dataset_stats": {
-    "n_samples": 2000,
-    "eta_mean": 6.71,
-    "eta_std": 0.38,
-    "etd_mean": 10.4,
-    "etd_std": 1.31
-  },
-  "model_info": {
-    "eta": {
-      "type": "RandomForestRegressor",
-      "n_features": 14,
-      "n_trees": 10
-    },
-    "etd": {
-      "type": "RandomForestRegressor",
-      "n_features": 14,
-      "n_trees": 10
-    }
-  }
-}
-```
-
-**2. Console Summary**
-Prints human-readable summary to terminal for quick review.
-
-### Interpreting Results
-
-**Good Model Indicators**:
-
-- Test MAE < 0.1s (predictions within 100ms)
-- Test R² > 0.95 (explains 95%+ of variance)
-- Improvement over physics > 0% (beats simple calculation)
-- Test MAE not much larger than Train MAE (not overfitting)
-
-**Warning Signs**:
-
-- Large gap between train and test MAE (overfitting)
-- Low R² < 0.90 (model not learning patterns)
-- Negative improvement (worse than physics)
-
-## Configuration Files
-
-### ml.yaml
-
-Complete configuration for the entire ML pipeline:
+Edit `config/ml.yaml`:
 
 ```yaml
 network:
@@ -482,291 +209,140 @@ network:
   track_length: 4000
 
 sensors:
-  s0: 1870
-  s1: 2355
-  s2: 2678
+  s0: 1500
+  s1: 2100
+  s2: 2550
   crossing: 3000
 
 training:
-  n_samples: 2000
+  n_samples: 1000
   sim_duration: 300
   random_seed: 42
-
-  speed_distribution:
-    fast:
-      min: 35
-      max: 45
-    medium:
-      min: 25
-      max: 35
-    slow:
-      min: 15
-      max: 25
-
   train_params:
     lengths: [100, 150, 200, 250]
-    accel_range: [0.3, 2.5]
-    decel_range: [0.3, 2.5]
-    speed_factor_range: [0.9, 1.1]
 
 model:
-  type: random_forest
-  max_depth_range: [4, 10]
-  min_samples_split: 5
-  test_size: 0.15
-  val_size: 0.15
-
-output:
-  data_dir: data
-  model_dir: models
-  results_dir: results
-  sumo_dir: sumo
-  arduino_header: train_models.h
-  python_model: eta_model.pkl
+  type: linear_regression
+  test_size: 0.2
 ```
 
-## Running the Pipeline
+Adjustments:
 
-### Full Pipeline
+- More accuracy: Increase n_samples to 2000
+- Faster testing: Decrease n_samples to 100
+- Different sensors: Change sensor positions
 
-```bash
-make ml-pipeline
+## Failed Experiments
+
+### Experiment 1: 100 Training Samples
+
+**Result:** Poor accuracy
+
+- ETA error: 0.8s
+- R² score: 0.65
+
+**Lesson:** Need 500-1000 samples minimum.
+
+### Experiment 2: Only 2 Features
+
+**Result:** Only 8% improvement over physics
+
+- Missing information about train behavior
+
+**Lesson:** Need multiple sensor measurements.
+
+### Experiment 3: Polynomial Features
+
+**Result:** Overfitting
+
+- Training error: 0.1s (great)
+- Test error: 0.9s (terrible)
+- Model memorized instead of learned
+
+**Lesson:** Keep it simple, linear works fine.
+
+### Experiment 4: ETD from ETA
+
+**Result:** ETD error 0.9s
+
+- Speed changes between arrival and clearance
+
+**Lesson:** Train separate models for ETA and ETD.
+
+## Arduino Deployment
+
+Linear regression converts to simple C code:
+
+```cpp
+float predictETA(float features[8]) {
+    float eta = 5.234;  // Intercept
+    eta += features[0] * 0.0287;   // distance_remaining
+    eta += features[1] * 0.0123;   // train_length
+    eta += features[2] * -0.1456;  // last_speed
+    eta += features[3] * -0.0678;  // speed_change
+    eta += features[4] * 0.0891;   // time_01
+    eta += features[5] * 0.0734;   // time_12
+    eta += features[6] * -0.1234;  // avg_speed_01
+    eta += features[7] * -0.1156;  // avg_speed_12
+    return eta;
+}
 ```
 
-Executes all steps in sequence:
-
-1. Data generation (2-3 hours for 2000 samples)
-2. Feature extraction (few seconds)
-3. Model training (1-2 minutes with hyperparameter search)
-4. Model export (instant)
-5. Evaluation (instant)
-
-### Quick Testing
-
-```bash
-make ml-pipeline-quick
-```
-
-Uses only 50 samples for rapid testing (~2 minutes total).
-
-### Individual Steps
-
-```bash
-make ml-data           # Generate training data
-make ml-features       # Extract features
-make ml-train          # Train models
-make ml-export         # Export for Arduino
-make ml-evaluate       # Evaluate performance
-```
-
-## File Dependencies
-
-```
-ml.yaml
-    │
-    ├─> data_generator.py
-    │       │
-    │       └─> raw_trajectories.csv (with length column)
-    │               │
-    │               └─> feature_extractor.py
-    │                       │
-    │                       └─> features.csv (14 features, ETA & ETD targets)
-    │                               │
-    │                               └─> model_trainer.py
-    │                                       │
-    │                                       ├─> eta_model.pkl (Random Forest)
-    │                                       │       │
-    │                                       ├─> etd_model.pkl (Random Forest)
-    │                                       │       │
-    │                                       │       ├─> model_exporter.py
-    │                                       │       │       │
-    │                                       │       │       └─> train_models.h
-    │                                       │       │
-    │                                       │       └─> evaluator.py
-    │                                       │               │
-    │                                       │               └─> evaluation_results.json
-    │                                       │
-    │                                       └─> (training metrics displayed)
-```
-
-## Failed Experiments and Lessons Learned
-
-### Experiment 1: Single Decision Trees with Limited Data
-
-**What We Tried**: Trained single decision trees (depth 3-15) on 500 samples to predict both ETA and ETD.
-
-**The Problem**:
-
-- ETA model: Barely beat physics baseline (1-2% improvement)
-- ETD model: Performed WORSE than physics baseline (-13% to -27%)
-- Both models had high node counts (125-191 nodes) indicating overfitting
-- Test R² was good (0.94-0.97) but test MAE was worse than simple physics
-
-**Root Cause**:
-
-- Insufficient training data (500 samples) for the complexity of the problem
-- Decision trees with 125+ nodes were memorizing training data patterns
-- ETD has higher variance (std: 1.31s vs 0.38s for ETA) due to train length variation
-- The physics baseline for ETD was already quite accurate (0.086s error)
-- Single trees couldn't generalize well to unseen combinations of speed, acceleration, and length
-
-**What We Learned**:
-
-- More training data is essential for learning complex relationships
-- High node count with small dataset = overfitting
-- ETD is fundamentally harder than ETA because it depends on train length passing time
-- Single decision trees are too simple for this multi-variable prediction task
-
-### Experiment 2: Using ETA as Input to ETD Model
-
-**What We Tried**: Created a hierarchical model where ETD uses the predicted ETA as an additional feature, reasoning that ETD = ETA + time_for_length_to_pass.
-
-**The Problem**:
-
-- Added complexity without improving performance
-- ETD model still performed worse than physics (-27.6% improvement)
-- Created dependency chain making deployment more complex
-- Feature "eta_predicted" leaked information from training set
-
-**Root Cause**:
-
-- The relationship ETD = ETA + length/speed is already captured by physics
-- ML model needs to learn CORRECTIONS to physics, not recreate physics
-- Adding ETA prediction introduced error propagation
-- Still had fundamental problem: not enough training data
-
-**What We Learned**:
-
-- Don't overcomplicate the model architecture
-- Feature engineering should provide new information, not redundant calculations
-- When physics baseline is good, ML should learn residuals, not recreate the formula
-
-### Experiment 3: Derived ETD from ML-Predicted ETA
-
-**What We Tried**: Only train ML for ETA, then calculate ETD using: `ETD = ETA_predicted + train_length / speed_at_crossing`
-
-**The Problem**:
-
-- This was actually a reasonable approach and would have worked
-- However, it defeats the purpose of using ML for ETD
-- Any improvements in ETA barely translated to ETD improvements
-- Lost opportunity to learn ETD-specific patterns (like how train length affects deceleration)
-
-**What We Learned**:
-
-- Sometimes the simple solution is good enough
-- But if ML is required for both predictions (project requirement), need a better approach
-- Separating concerns (ETA vs ETD) makes sense, but both should use ML
-
-### Final Solution: Random Forests with More Data
-
-**What Changed**:
-
-1. Increased training samples from 500 to 2000 (4x more data)
-2. Switched from single decision trees to Random Forests (5-15 trees)
-3. Added engineered features: `length_speed_ratio`, `distance_length_ratio`
-4. Applied stronger regularization: min_leaf 5-10, depth 4-9
-5. Trained completely independent models for ETA and ETD
-
-**Why This Works**:
-
-- 2000 samples provide enough examples of different train length + speed + acceleration combinations
-- Random Forests reduce overfitting through bootstrap aggregating (bagging)
-- Each tree sees different data, final prediction is average (more stable)
-- Engineered features help model understand train length impact on timing
-- Regularization prevents individual trees from becoming too complex
-- Independent models allow each to learn task-specific patterns
-
-**Results**:
-
-- ETA: 5-15% improvement over physics, R² > 0.97
-- ETD: 5-20% improvement over physics, R² > 0.96
-- Both models generalize well to test set
-- Deployable on Arduino (5-15 trees × 20-50 nodes = manageable size)
+Only 8 multiplications and 8 additions. Runs in microseconds on Arduino.
 
 ## Troubleshooting
 
-### No Successful Simulations
+**Problem:** No successful simulations
+**Solution:** Check SUMO installation: `sumo --version`
 
-**Problem**: `No successful simulations` message  
-**Cause**: SUMO network or configuration error  
-**Solution**: Check that SUMO is installed and network files exist
+**Problem:** Test error > 0.8s
+**Solution:** Increase n_samples to 1500-2000
 
-### Low Model Performance
+**Problem:** R² score < 0.75
+**Solution:** Check sensor positions, verify data quality
 
-**Problem**: Test R² < 0.90 or negative improvement over physics  
-**Cause**: Insufficient training data or poor regularization  
-**Solution**:
+**Problem:** Plots show patterns in residuals
+**Solution:** May need additional features or non-linear model
 
-- Increase `n_samples` to 2000 or more
-- Check sensor positions are reasonable
-- Verify speed distributions cover expected range
-- Ensure Random Forest hyperparameters include regularization (min_leaf ≥ 5)
+**Problem:** Matplotlib errors
+**Solution:** Install: `pip install matplotlib`
 
-### Overfitting
+## File Structure
 
-**Problem**: Training MAE much lower than test MAE, high node counts  
-**Cause**: Model too complex for amount of data  
-**Solution**:
+```
+ml/
+├── __init__.py
+├── data.py             # Data generation, features, plots
+├── model.py            # Training and evaluation
+└── README.md
 
-- Use Random Forests instead of single trees
-- Increase `min_samples_leaf` to 8-10
-- Limit `max_depth` to 4-9
-- Generate more training samples
-
-### Memory Issues on Arduino
-
-**Problem**: Arduino runs out of memory  
-**Cause**: Too many trees or trees too deep  
-**Solution**:
-
-- Reduce number of trees to 5-10
-- Reduce `max_depth` to 4-6
-- Consider using single decision tree with strong regularization for resource-constrained devices
-
-### ETD Worse Than Physics
-
-**Problem**: ETD model improvement is negative  
-**Cause**: Insufficient training data or overfitting  
-**Solution**:
-
-- Must have at least 1500-2000 samples
-- Use Random Forests, not single trees
-- Add length-related engineered features
-- Increase regularization (min_leaf ≥ 8)
-
-## Technical Terms Glossary
-
-**Random Forest**: Ensemble learning method that combines multiple decision trees, each trained on different data subsets, to make more accurate and stable predictions.
-
-**Decision Tree**: Machine learning algorithm that makes predictions by following a series of if-then rules, similar to a flowchart.
-
-**Ensemble**: Combining multiple models to produce better predictions than any single model.
-
-**Bootstrap Sampling**: Creating training subsets by randomly sampling with replacement from the original dataset.
-
-**Feature**: A measurable property used as input to the model (e.g., speed, distance, acceleration, train length).
-
-**ETA (Estimated Time of Arrival)**: Predicted time until train front reaches crossing.
-
-**ETD (Estimated Time of Departure)**: Predicted time until train rear clears crossing.
-
-**MAE (Mean Absolute Error)**: Average size of prediction errors, ignoring whether they're over or under estimates.
-
-**RMSE (Root Mean Square Error)**: Similar to MAE but penalizes large errors more heavily.
-
-**R² Score**: Percentage of variance in the target variable that the model explains. 1.0 is perfect, 0.0 means model is no better than guessing the average.
-
-**Overfitting**: When a model learns the training data too well (including noise) and performs poorly on new data.
-
-**Regularization**: Techniques to prevent overfitting by constraining model complexity (e.g., limiting tree depth, requiring minimum samples per leaf).
-
-**Hyperparameter**: A setting that controls how the model learns (e.g., number of trees, tree depth), as opposed to parameters the model learns from data.
-
-**Validation Set**: Data used to choose the best hyperparameters, separate from test set used for final evaluation.
-
-**Feature Engineering**: Creating new features from existing data that help the model learn better (e.g., length_speed_ratio).
+outputs/
+├── data/
+│   ├── raw_trajectories.csv
+│   └── features.csv
+├── models/
+│   ├── eta_model.pkl
+│   └── etd_model.pkl
+├── plots/
+│   ├── train_trajectories.png
+│   ├── feature_distributions.png
+│   ├── feature_correlations.png
+│   ├── physics_comparison.png
+│   ├── eta_training.png
+│   └── etd_training.png
+└── results/
+    └── evaluation_results.json
+```
 
 ## Summary
 
-The ML pipeline creates an intelligent system that predicts both train arrival and departure times more accurately than simple physics calculations. By training Random Forest models on 2000 diverse train scenarios, the system learns complex relationships between train length, speed, acceleration, and timing. The models achieve 5-20% improvements over physics baselines, with predictions accurate to within 40-70 milliseconds. The exported C code allows these predictions to run on inexpensive embedded hardware, making the system practical for real-world deployment at railroad crossings.
+The ML pipeline:
+
+1. Generates 1000 diverse train scenarios
+2. Extracts 8 features from sensor data
+3. Creates visualizations for data understanding
+4. Trains simple linear regression models
+5. Achieves 0.4-0.5s prediction accuracy
+6. Deploys as lightweight Arduino code
+
+Linear regression provides the simplest possible ML model while achieving significant improvements over physics baselines.
