@@ -5,32 +5,43 @@ import traci
 import yaml
 from utils.logger import Logger
 
+
 class CrossingController:
-    def __init__(self, config_path='config/thresholds.yaml'):
+    def __init__(self, config_path='config/simulation.yaml'):
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
         
-        self.sensors = self.config['sensor_positions']
-        self.closure_threshold = self.config['closure_before_eta']
-        self.opening_threshold = self.config['opening_after_etd']
-        self.notification_threshold = max(self.config['notification_times'].values())
-        self.engine_off_threshold = self.config['engine_off_threshold']
+        thresholds_path = 'outputs/results/thresholds.yaml'
+        try:
+            with open(thresholds_path) as f:
+                thresholds = yaml.safe_load(f)
+        except FileNotFoundError:
+            Logger.log(f"WARNING: No thresholds found at {thresholds_path}, using defaults")
+            thresholds = {
+                'closure_before_eta': 10.0,
+                'opening_after_etd': 3.0,
+                'notification_time': 30.0,
+                'sensor_positions': [1500.0, 900.0, 450.0],
+                'engine_off_threshold': 5.0
+            }
         
-        self.crossing_w = -200.0
-        self.crossing_e = 200.0
+        self.closure_threshold = thresholds['closure_before_eta']
+        self.opening_threshold = thresholds['opening_after_etd']
+        self.notification_threshold = thresholds['notification_time']
+        self.engine_off_threshold = thresholds['engine_off_threshold']
         
-        self.sensor_positions = [self.crossing_w - s for s in self.sensors]
+        net_cfg = self.config.get('network', {})
+        self.crossing_w = net_cfg.get('crossing_w', -200.0)
+        self.crossing_e = net_cfg.get('crossing_e', 200.0)
+        
+        self.sensor_positions = [self.crossing_w - s for s in thresholds['sensor_positions']]
         
         self.trains = {}
         self.gates_closed = False
         self.intersections_notified = False
         self.vehicles_engines_off = set()
-        
         self.vehicle_wait_start = {}
         self.engine_off_count = 0
-        self.last_debug_time = 0
-        
-        Logger.log(f"Engine off threshold: {self.engine_off_threshold}s")
     
     def step(self, t):
         """Execute one control step"""
@@ -38,20 +49,6 @@ class CrossingController:
         self._control_gates(t)
         self._control_intersections(t)
         self._control_vehicle_engines(t)
-        
-        # DEBUG: Print status every 30 seconds
-        if t - self.last_debug_time >= 30:
-            self._debug_status(t)
-            self.last_debug_time = t
-    
-    def _debug_status(self, t):
-        """Print debug status"""
-        if self.gates_closed and self.vehicle_wait_start:
-            waiting_count = len(self.vehicle_wait_start)
-            if waiting_count > 0:
-                max_wait = max(t - start_time for start_time in self.vehicle_wait_start.values())
-                expected = self._get_expected_wait_time(t)
-                Logger.log(f"DEBUG: {waiting_count} vehicles waiting, max wait: {max_wait:.1f}s, expected remaining: {expected:.1f}s, engines off: {len(self.vehicles_engines_off)}")
     
     def _track_trains(self, t):
         """Track train positions and calculate ETAs"""
@@ -59,8 +56,11 @@ class CrossingController:
             if 'train' not in tid.lower():
                 continue
             
-            pos = traci.vehicle.getPosition(tid)[0]
-            speed = traci.vehicle.getSpeed(tid)
+            try:
+                pos = traci.vehicle.getPosition(tid)[0]
+                speed = traci.vehicle.getSpeed(tid)
+            except:
+                continue
             
             if tid not in self.trains:
                 self.trains[tid] = {
@@ -135,7 +135,7 @@ class CrossingController:
     def _close_gates(self):
         """Close crossing gates"""
         self.gates_closed = True
-        Logger.log("🚨 GATES CLOSED 🚨")
+        Logger.log("GATES CLOSED")
     
     def _open_gates(self):
         """Open crossing gates"""
@@ -143,12 +143,10 @@ class CrossingController:
         self.intersections_notified = False
         self.vehicles_engines_off.clear()
         self.vehicle_wait_start.clear()
-        Logger.log("✅ GATES OPENED ✅")
+        Logger.log("GATES OPENED")
         if self.engine_off_count > 0:
-            Logger.log(f"Total vehicles with engine off during this closure: {self.engine_off_count}")
+            Logger.log(f"Vehicles with engine off during closure: {self.engine_off_count}")
             self.engine_off_count = 0
-        else:
-            Logger.log("⚠️ NO VEHICLES HAD ENGINES OFF")
     
     def _control_intersections(self, t):
         """Control intersection notifications"""
@@ -181,7 +179,6 @@ class CrossingController:
             
             in_queue_w = abs(pos - self.crossing_w) < 50 and speed < 0.5
             in_queue_e = abs(pos - self.crossing_e) < 50 and speed < 0.5
-            
             is_waiting = in_queue_w or in_queue_e
             
             if is_waiting:
@@ -198,7 +195,6 @@ class CrossingController:
                     self.vehicles_engines_off.add(vid)
                     self.engine_off_count += 1
                     Logger.log(f"Vehicle {vid} engine off (waited: {wait_time:.1f}s, remaining: {expected_remaining:.1f}s)")
-            
             else:
                 if vid in self.vehicle_wait_start:
                     del self.vehicle_wait_start[vid]

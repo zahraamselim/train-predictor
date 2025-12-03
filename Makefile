@@ -61,46 +61,23 @@ down:
 shell:
 	$(DOCKER_RUN) /bin/bash
 
+
 ml-data:
-	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator
+	$(DOCKER_RUN) $(PYTHON) -m ml.data
 
 ml-data-quick:
-	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator --samples 50
-
-ml-features:
-	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
+	$(DOCKER_RUN) $(PYTHON) -m ml.data --samples 50
 
 ml-train:
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
+	$(DOCKER_RUN) $(PYTHON) -m ml.model
 
-ml-export:
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
+ml-pipeline: ml-data ml-train
 
-ml-params:
-	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
+ml-pipeline-quick: ml-data-quick ml-train
 
-ml-evaluate:
-	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
 
-ml-pipeline:
-	@echo "=== Running ML Pipeline ==="
-	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator
-	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
-	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
-	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
-	@echo "=== ML Pipeline Complete ==="
-
-ml-pipeline-quick:
-	@echo "=== Running Quick ML Pipeline ==="
-	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator --samples 50
-	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
-	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
-	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
-	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
-	@echo "=== Quick ML Pipeline Complete ==="
+exp-ml:
+	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.model
 
 th-network:
 	$(DOCKER_RUN) $(PYTHON) -m thresholds.network_generator

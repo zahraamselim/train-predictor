@@ -1,5 +1,5 @@
 """
-Collect threshold data from SUMO simulation
+Threshold data collector
 Run: python -m thresholds.data_collector
 """
 import traci
@@ -8,6 +8,7 @@ import numpy as np
 import yaml
 from pathlib import Path
 from utils.logger import Logger
+
 
 class ThresholdDataCollector:
     def __init__(self, config_path='config/thresholds.yaml'):
@@ -59,7 +60,10 @@ class ThresholdDataCollector:
                 
                 step += 1
                 if step % 600 == 0:
-                    Logger.log(f"Progress: {t:.0f}s ({step/max_steps*100:.0f}%) - Clearances: {len(self.clearance_data)}, Trains: {len(self.train_data)}, Travels: {len(self.travel_data)}")
+                    Logger.log(f"Progress: {t:.0f}s ({step/max_steps*100:.0f}%) - "
+                             f"Clearances: {len(self.clearance_data)}, "
+                             f"Trains: {len(self.train_data)}, "
+                             f"Travels: {len(self.travel_data)}")
         
         except KeyboardInterrupt:
             Logger.log("Interrupted by user")
@@ -191,8 +195,9 @@ class ThresholdDataCollector:
             Logger.log(f"  95th percentile: {df['clearance_time'].quantile(0.95):.2f}s")
             Logger.log(f"  Max: {df['clearance_time'].max():.2f}s")
         else:
-            Logger.log("WARNING: No clearance data collected")
-            pd.DataFrame(columns=['vehicle_id', 'clearance_time', 'enter_speed', 'exit_speed', 'distance']).to_csv(
+            Logger.log("No clearance data collected")
+            pd.DataFrame(columns=['vehicle_id', 'clearance_time', 'enter_speed', 
+                                'exit_speed', 'distance']).to_csv(
                 self.data_dir / 'gate_clearance.csv', index=False)
         
         if self.train_data:
@@ -203,8 +208,9 @@ class ThresholdDataCollector:
             Logger.log(f"  Passage time mean: {df['passage_time'].mean():.2f}s")
             Logger.log(f"  Speed range: {df['min_speed'].min():.1f} - {df['max_speed'].max():.1f} m/s")
         else:
-            Logger.log("WARNING: No train data collected")
-            pd.DataFrame(columns=['train_id', 'passage_time', 'avg_speed', 'min_speed', 'max_speed', 'speed_variance', 'length', 'arrival_time']).to_csv(
+            Logger.log("No train data collected")
+            pd.DataFrame(columns=['train_id', 'passage_time', 'avg_speed', 'min_speed', 
+                                'max_speed', 'speed_variance', 'length', 'arrival_time']).to_csv(
                 self.data_dir / 'train_passages.csv', index=False)
         
         if self.travel_data:
@@ -215,9 +221,11 @@ class ThresholdDataCollector:
             Logger.log(f"  Mean: {df['travel_time'].mean():.2f}s")
             Logger.log(f"  95th percentile: {df['travel_time'].quantile(0.95):.2f}s")
         else:
-            Logger.log("WARNING: No travel data collected")
-            pd.DataFrame(columns=['vehicle_id', 'intersection', 'travel_time', 'distance', 'avg_speed']).to_csv(
+            Logger.log("No travel data collected")
+            pd.DataFrame(columns=['vehicle_id', 'intersection', 'travel_time', 
+                                'distance', 'avg_speed']).to_csv(
                 self.data_dir / 'vehicle_travels.csv', index=False)
+
 
 if __name__ == '__main__':
     import argparse

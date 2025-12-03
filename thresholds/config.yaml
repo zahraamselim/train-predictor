@@ -1,0 +1,31 @@
+data_collection:
+  duration: 3600
+  step_length: 0.1
+  train_period: 180
+
+  train:
+    length: 150.0
+    min_speed: 25.0
+    typical_speed: 33.33
+    max_speed: 38.89
+
+  vehicle:
+    max_speed: 20.0
+    typical_speed: 16.67
+    accel: 2.6
+    decel: 4.5
+
+  vehicle_flow:
+    main_road: 400
+    side_roads: 150
+    trucks: 80
+
+safety:
+  margin_close: 2.0
+  margin_open: 3.0
+  driver_reaction: 2.5
+  engine_off_threshold: 5.0
+
+output:
+  thresholds_dir: outputs/data
+  config_file: config/thresholds_calculated.yaml

@@ -1,41 +1,31 @@
 {
   "eta_metrics": {
-    "train_mae": 0.02185233065101139,
-    "test_mae": 0.0313332182193367,
-    "test_rmse": 0.053139515774392014,
-    "test_r2": 0.9862387517702882,
-    "physics_baseline_mae": 0.05684617529655376,
-    "improvement_over_physics": 44.88069240212148
+    "train_error": 0.01484818499603181,
+    "val_error": 0.01585231097362342,
+    "test_error": 0.014033671509284095,
+    "test_rmse": 0.0247681190028772,
+    "test_r2": -0.00939484811304836,
+    "physics_error": 0.016152425544894596,
+    "improvement": 13.117249974138959
   },
   "etd_metrics": {
-    "train_mae": 0.040086858796182685,
-    "test_mae": 0.058140499610823966,
-    "test_rmse": 0.1364445697890101,
-    "test_r2": 0.9904277885449118,
-    "physics_baseline_mae": 0.08083546299670434,
-    "improvement_over_physics": 28.075503676901864
+    "train_error": 0.02036014618072938,
+    "val_error": 0.021837236576988252,
+    "test_error": 0.017653410640658455,
+    "test_rmse": 0.026056630830173157,
+    "test_r2": 0.9994503762578201,
+    "physics_error": 0.02314965598453116,
+    "improvement": 23.74223335130921
   },
   "dataset_stats": {
-    "n_samples": 2000,
-    "eta_mean": 6.71095,
-    "eta_std": 0.38854933121985374,
-    "eta_min": 6.399999999999992,
-    "eta_max": 9.5,
-    "etd_mean": 10.328,
-    "etd_std": 1.3062500314152288,
-    "etd_min": 8.399999999999991,
-    "etd_max": 15.200000000000005
+    "n_samples": 1000,
+    "eta_mean": 9.008700000000001,
+    "eta_std": 0.033696371398793744,
+    "etd_mean": 12.5395,
+    "etd_std": 1.1226264027003998
   },
   "model_info": {
-    "eta": {
-      "type": "RandomForestRegressor",
-      "n_features": 14,
-      "n_trees": 10
-    },
-    "etd": {
-      "type": "RandomForestRegressor",
-      "n_features": 14,
-      "n_trees": 5
-    }
+    "type": "SGDRegressor",
+    "n_features": 8
   }
 }
