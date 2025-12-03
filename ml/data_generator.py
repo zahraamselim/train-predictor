@@ -154,12 +154,12 @@ class DataGenerator:
         if not Path(fcd_file).exists():
             return None
         
-        data = self.parse_fcd(fcd_file, run_id)
+        data = self.parse_fcd(fcd_file, run_id, p['length'])
         Path(fcd_file).unlink(missing_ok=True)
         
         return data
     
-    def parse_fcd(self, fcd_file, run_id):
+    def parse_fcd(self, fcd_file, run_id, train_length):
         """Parse FCD XML output"""
         try:
             tree = ET.parse(fcd_file)
@@ -177,6 +177,7 @@ class DataGenerator:
                         'pos': float(vehicle.get('pos')),
                         'speed': float(vehicle.get('speed')),
                         'acceleration': float(vehicle.get('acceleration', 0)),
+                        'length': train_length,
                         'run_id': run_id
                     })
         
@@ -203,7 +204,7 @@ class DataGenerator:
                 all_data.append(df)
                 successful += 1
                 
-                if (i + 1) % 50 == 0:
+                if (i + 1) % 100 == 0:
                     Logger.log(f"Progress: {successful}/{i+1} ({successful/(i+1)*100:.1f}%)")
         
         if not all_data:

@@ -1,140 +1,182 @@
-.PHONY: all quick train visualize clean help
+.PHONY: help build up down shell clean
+.PHONY: ml-data ml-features ml-train ml-export ml-evaluate ml-params ml-pipeline
+.PHONY: th-network th-collect th-analyze th-export th-pipeline
+.PHONY: sim-network sim-run sim-gui
+.PHONY: pipeline
 
-DOCKER_CMD = cd docker && docker-compose run --rm sumo
-ML_DIR = /app/ml
-
-all: train
-
-quick:
-	$(DOCKER_CMD) python3 $(ML_DIR)/main.py --quick
-
-train:
-	$(DOCKER_CMD) python3 $(ML_DIR)/main.py
-
-train-samples:
-	$(DOCKER_CMD) python3 $(ML_DIR)/main.py --samples $(N)
-
-visualize:
-	$(DOCKER_CMD) python3 $(ML_DIR)/main.py --quick --visualize
-
-gui:
-	cd ml && python3 -m src.visualizer
-
-clean:
-	cd ml && rm -rf data models results
-	cd ml && rm -f *.xml *.csv *.pkl *.h
-
-clean-temp:
-	cd ml && rm -f temp_* rail.* demo.* sensors.* gui_settings.xml
+DOCKER_RUN = cd docker && docker-compose run --rm sumo
+PYTHON = python3
 
 help:
-	@echo "Train ETA ML System"
+	@echo "Level Crossing Control System"
 	@echo ""
-	@echo "Available targets:"
-	@echo "  make quick           - Quick training with 50 samples"
-	@echo "  make train           - Full training with config samples"
-	@echo "  make train-samples N=500 - Train with custom sample count"
-	@echo "  make visualize       - Quick train + launch visualization"
-	@echo "  make clean           - Remove all generated files"
-	@echo "  make clean-temp      - Remove temporary files only"
-	@echo "  make help            - Show this help"
+	@echo "Docker:"
+	@echo "  make build            Build Docker image"
+	@echo "  make up               Start container"
+	@echo "  make down             Stop container"
+	@echo "  make shell            Open shell in container"
+	@echo ""
+	@echo "ML Training Pipeline:"
+	@echo "  make ml-data          Generate training trajectories (2000 samples)"
+	@echo "  make ml-data-quick    Quick data generation (50 samples)"
+	@echo "  make ml-features      Extract features from trajectories"
+	@echo "  make ml-train         Train ETA/ETD prediction models"
+	@echo "  make ml-export        Export models for Arduino"
+	@echo "  make ml-params        Export train parameters"
+	@echo "  make ml-evaluate      Evaluate trained models"
+	@echo "  make ml-pipeline      Run complete ML pipeline"
+	@echo "  make ml-pipeline-quick Quick ML pipeline (testing)"
+	@echo ""
+	@echo "Threshold Analysis Pipeline:"
+	@echo "  make th-network       Generate threshold collection network"
+	@echo "  make th-collect       Collect threshold data (30 min)"
+	@echo "  make th-collect-quick Quick data collection (5 min)"
+	@echo "  make th-analyze       Calculate control thresholds"
+	@echo "  make th-export        Export thresholds for Arduino"
+	@echo "  make th-pipeline      Run complete threshold pipeline"
+	@echo "  make th-pipeline-quick Quick threshold pipeline"
+	@echo ""
+	@echo "Simulation Pipeline:"
+	@echo "  make sim-network      Generate simulation network"
+	@echo "  make sim-run          Run simulation (1 hour)"
+	@echo "  make sim-run-quick    Quick simulation (5 min)"
+	@echo "  make sim-gui          Run simulation with GUI"
+	@echo ""
+	@echo "Complete Pipeline:"
+	@echo "  make pipeline         Run everything (ML + Thresholds + Sim network)"
+	@echo "  make pipeline-quick   Quick complete pipeline"
+	@echo ""
+	@echo "Cleanup:"
+	@echo "  make clean            Remove all generated files"
 
-# .PHONY: help build up down shell clean
-# .PHONY: pipeline network data analyze train export
-# .PHONY: simulate gui metrics test
+build:
+	cd docker && docker-compose build
 
-# DOCKER_RUN = cd docker && docker-compose run --rm sumo
-# PYTHON = python3
+up:
+	cd docker && docker-compose up -d
 
-# help:
-# 	@echo "Level Crossing Control System"
-# 	@echo ""
-# 	@echo "Docker:"
-# 	@echo "  make build       Build Docker image"
-# 	@echo "  make up          Start container"
-# 	@echo "  make down        Stop container"
-# 	@echo "  make shell       Open shell in container"
-# 	@echo ""
-# 	@echo "Pipeline:"
-# 	@echo "  make pipeline    Run complete pipeline"
-# 	@echo "  make network     Generate SUMO network"
-# 	@echo "  make data        Collect training data"
-# 	@echo "  make analyze     Analyze thresholds"
-# 	@echo "  make train       Train ML model"
-# 	@echo "  make export      Export to Arduino"
-# 	@echo ""
-# 	@echo "Simulation:"
-# 	@echo "  make simulate    Run simulation"
-# 	@echo "  make gui         Run simulation with GUI"
-# 	@echo "  make test        Quick test (60s)"
-# 	@echo ""
-# 	@echo "Output:"
-# 	@echo "  make metrics     View metrics summary"
-# 	@echo "  make clean       Clean all outputs"
+down:
+	cd docker && docker-compose down
 
-# build:
-# 	cd docker && docker-compose build
+shell:
+	$(DOCKER_RUN) /bin/bash
 
-# up:
-# 	cd docker && docker-compose up -d
+ml-data:
+	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator
 
-# down:
-# 	cd docker && docker-compose down
+ml-data-quick:
+	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator --samples 50
 
-# shell:
-# 	$(DOCKER_RUN) /bin/bash
+ml-features:
+	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
 
-# pipeline:
-# 	$(DOCKER_RUN) $(PYTHON) scripts/pipeline.py
+ml-train:
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
 
-# network:
-# 	$(DOCKER_RUN) $(PYTHON) -c "from simulation.network.generator import NetworkGenerator; NetworkGenerator(mode='complete').generate()"
+ml-export:
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
 
-# data:
-# 	$(DOCKER_RUN) $(PYTHON) simulation/data/collector.py
+ml-params:
+	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
 
-# analyze:
-# 	$(DOCKER_RUN) $(PYTHON) simulation/data/analyzer.py
+ml-evaluate:
+	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
 
-# train:
-# 	$(DOCKER_RUN) $(PYTHON) -c "from simulation.ml.trainer import ETATrainer; t = ETATrainer(); t.collect_data(250); t.train_model()"
+ml-pipeline:
+	@echo "=== Running ML Pipeline ==="
+	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator
+	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
+	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
+	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
+	@echo "=== ML Pipeline Complete ==="
 
-# export:
-# 	$(DOCKER_RUN) $(PYTHON) -c "from simulation.ml.exporter import ArduinoExporter; e = ArduinoExporter(); e.export_model(); e.export_config()"
+ml-pipeline-quick:
+	@echo "=== Running Quick ML Pipeline ==="
+	$(DOCKER_RUN) $(PYTHON) -m ml.data_generator --samples 50
+	$(DOCKER_RUN) $(PYTHON) -m ml.feature_extractor
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_trainer
+	$(DOCKER_RUN) $(PYTHON) -m ml.model_exporter
+	$(DOCKER_RUN) $(PYTHON) -m ml.train_params_exporter
+	$(DOCKER_RUN) $(PYTHON) -m ml.evaluator
+	@echo "=== Quick ML Pipeline Complete ==="
 
-# simulate:
-# 	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py
+th-network:
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.network_generator
 
-# gui:
-# 	@command -v xhost >/dev/null 2>&1 && xhost +local:docker || true
-# 	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py --gui
+th-collect:
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.data_collector
 
-# test:
-# 	$(DOCKER_RUN) $(PYTHON) scripts/simulate.py --duration 60
+th-collect-quick:
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.data_collector --duration 300
 
-# debug:
-# 	$(DOCKER_RUN) $(PYTHON) debug_train.py
+th-analyze:
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.analyzer
 
-# train-quick:
-# 	cd docker && docker-compose run --rm sumo python3 /app/train/train_eta.py --quick
+th-export:
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.exporter
 
-# train-full:
-# 	cd docker && docker-compose run --rm sumo python3 /app/train/train_eta.py --samples 250
+th-pipeline:
+	@echo "=== Running Threshold Pipeline ==="
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.network_generator
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.data_collector
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.analyzer
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.exporter
+	@echo "=== Threshold Pipeline Complete ==="
 
-# train-custom:
-# 	cd docker && docker-compose run --rm sumo python3 /app/train/train_eta.py --samples $(SAMPLES)
+th-pipeline-quick:
+	@echo "=== Running Quick Threshold Pipeline ==="
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.network_generator
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.data_collector --duration 300
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.analyzer
+	$(DOCKER_RUN) $(PYTHON) -m thresholds.exporter
+	@echo "=== Quick Threshold Pipeline Complete ==="
 
-# metrics:
-# 	@if [ -f outputs/metrics/summary.csv ]; then \
-# 		echo "Metrics Summary:"; \
-# 		cat outputs/metrics/summary.csv; \
-# 	else \
-# 		echo "No metrics available. Run 'make simulate' first."; \
-# 	fi
+sim-network:
+	$(DOCKER_RUN) $(PYTHON) -m simulation.network_generator
 
-# clean:
-# 	rm -rf outputs/data/* outputs/models/* outputs/metrics/*
-# 	rm -rf sumo/complete/*.xml sumo/training/*.xml
-# 	rm -f hardware/*.h
-# 	rm -f config/thresholds.yaml
-# 	cd docker && docker-compose down -v
+sim-run:
+	$(DOCKER_RUN) $(PYTHON) -m simulation.runner
+
+sim-run-quick:
+	$(DOCKER_RUN) $(PYTHON) -m simulation.runner --duration 300
+
+sim-gui:
+	@command -v xhost >/dev/null 2>&1 && xhost +local:docker || true
+	$(DOCKER_RUN) $(PYTHON) -m simulation.runner --gui
+
+hard-scale:
+	$(DOCKER_RUN) $(PYTHON) -m hardware.scale_config_generator
+
+pipeline: ml-pipeline th-pipeline sim-network
+	@echo ""
+	@echo "Complete pipeline finished"
+	@echo "ML models: outputs/models/train_models.h"
+	@echo "Thresholds: outputs/models/thresholds_config.h"
+	@echo "Train params: config/train_params.yaml"
+	@echo "Simulation network ready"
+	@echo ""
+	@echo "Run 'make sim-run' to test the system"
+
+pipeline-quick: ml-pipeline-quick th-pipeline-quick sim-network
+	@echo ""
+	@echo "Quick pipeline finished"
+	@echo "Run 'make sim-run-quick' to test"
+
+clean:
+	@echo "Cleaning generated files..."
+	rm -rf outputs/data/*
+	rm -rf outputs/models/*
+	rm -rf outputs/results/*
+	rm -rf outputs/metrics/*
+	rm -rf outputs/thresholds/*
+	rm -rf sumo/training/*.xml
+	rm -rf sumo/thresholds/*.xml
+	rm -rf sumo/complete/*.xml
+	rm -f config/thresholds_calculated.yaml
+	rm -f config/train_params.yaml
+	rm -f training.*.xml
+	rm -f thresholds.*.xml
+	rm -f thresholds_summary.xml
+	@echo "Clean complete"

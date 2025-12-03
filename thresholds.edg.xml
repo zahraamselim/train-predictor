@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <edge id="w_far_int" from="west_far" to="west_int" numLanes="2" speed="16.67"/>
+    <edge id="w_int_cross" from="west_int" to="crossing" numLanes="2" speed="16.67"/>
+    <edge id="cross_e_int" from="crossing" to="east_int" numLanes="2" speed="16.67"/>
+    <edge id="e_int_far" from="east_int" to="east_far" numLanes="2" speed="16.67"/>
+    
+    <edge id="e_far_int" from="east_far" to="east_int" numLanes="2" speed="16.67"/>
+    <edge id="e_int_cross" from="east_int" to="crossing" numLanes="2" speed="16.67"/>
+    <edge id="cross_w_int" from="crossing" to="west_int" numLanes="2" speed="16.67"/>
+    <edge id="w_int_far" from="west_int" to="west_far" numLanes="2" speed="16.67"/>
+    
+    <edge id="n_cross" from="north" to="crossing" numLanes="1" speed="13.89"/>
+    <edge id="cross_s" from="crossing" to="south" numLanes="1" speed="13.89"/>
+    <edge id="s_cross" from="south" to="crossing" numLanes="1" speed="13.89"/>
+    <edge id="cross_n" from="crossing" to="north" numLanes="1" speed="13.89"/>
+    
+    <edge id="rail_track" from="rail_s" to="rail_n" numLanes="1" speed="38.89" allow="rail"/>
+</edges>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes>
+    <vType id="car" length="4.5" maxSpeed="20.0" 
+          accel="2.6" decel="4.5" 
+          sigma="0.5" color="100,150,200"/>
+    <vType id="truck" length="8.0" maxSpeed="18.0" 
+          accel="1.8199999999999998" decel="4.05" 
+          sigma="0.5" color="80,80,80"/>
+    
+    <vType id="train_slow" vClass="rail" length="150.0" 
+          maxSpeed="25.0" accel="0.5" decel="0.5" color="150,30,30"/>
+    <vType id="train_med" vClass="rail" length="150.0" 
+          maxSpeed="33.33" accel="0.8" decel="0.8" color="180,40,40"/>
+    <vType id="train_fast" vClass="rail" length="150.0" 
+          maxSpeed="38.89" accel="1.2" decel="1.2" color="200,50,50"/>
+    
+    <route id="r_we" edges="w_far_int w_int_cross cross_e_int e_int_far"/>
+    <route id="r_ew" edges="e_far_int e_int_cross cross_w_int w_int_far"/>
+    <route id="r_ns" edges="n_cross cross_s"/>
+    <route id="r_sn" edges="s_cross cross_n"/>
+    <route id="r_rail" edges="rail_track"/>
+    
+    <flow id="f_cars_we" type="car" route="r_we" 
+          begin="0" end="3600" vehsPerHour="400"/>
+    <flow id="f_cars_ew" type="car" route="r_ew" 
+          begin="0" end="3600" vehsPerHour="400"/>
+    <flow id="f_trucks" type="truck" route="r_we" 
+          begin="0" end="3600" vehsPerHour="80"/>
+    <flow id="f_side_ns" type="car" route="r_ns" 
+          begin="0" end="3600" vehsPerHour="150"/>
+    <flow id="f_side_sn" type="car" route="r_sn" 
+          begin="0" end="3600" vehsPerHour="150"/>
+    
+    <flow id="f_train_slow" type="train_slow" route="r_rail" 
+          begin="0" period="540"/>
+    <flow id="f_train_med" type="train_med" route="r_rail" 
+          begin="180" period="540"/>
+    <flow id="f_train_fast" type="train_fast" route="r_rail" 
+          begin="360" period="540"/>
+</routes>

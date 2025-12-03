@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<routes>
-    <vType id="train_type" vClass="rail" length="150" maxSpeed="45.0" accel="2.0" decel="2.0" color="150,30,30"/>
-    <route id="train_route" edges="track_to_crossing crossing_to_end"/>
-</routes>

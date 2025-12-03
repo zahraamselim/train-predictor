@@ -35,6 +35,8 @@ class FeatureExtractor:
         """Extract features from single trajectory"""
         run_df = run_df.sort_values('time')
         
+        train_length = run_df['length'].iloc[0] if 'length' in run_df.columns else 150
+        
         triggers = {}
         for sensor_id, sensor_pos in self.sensors.items():
             mask = run_df['pos'] >= sensor_pos
@@ -61,6 +63,15 @@ class FeatureExtractor:
         crossing_time = triggers[crossing_id]['time']
         crossing_pos = triggers[crossing_id]['pos']
         
+        rear_crossing_mask = run_df['pos'] >= (crossing_pos + train_length)
+        if rear_crossing_mask.any():
+            rear_crossing_time = run_df.loc[rear_crossing_mask.idxmax(), 'time']
+        else:
+            rear_crossing_time = None
+        
+        if rear_crossing_time is None:
+            return None
+        
         dt_intervals = [times[i+1] - times[i] for i in range(len(times)-1)]
         
         avg_speeds = [
@@ -70,27 +81,37 @@ class FeatureExtractor:
         
         last_sensor_idx = -1
         eta_actual = crossing_time - times[last_sensor_idx]
+        etd_actual = rear_crossing_time - times[last_sensor_idx]
         
         distance_remaining = crossing_pos - positions[last_sensor_idx]
         last_speed = speeds[last_sensor_idx]
         last_accel = accels[last_sensor_idx]
         
         eta_physics = self.calculate_physics_eta(last_speed, last_accel, distance_remaining)
+        etd_physics = self.calculate_physics_eta(last_speed, last_accel, distance_remaining + train_length)
         
         speed_trend = (speeds[-1] - speeds[0]) / (times[-1] - times[0]) if times[-1] > times[0] else 0
         speed_variance = np.var(speeds)
         time_variance = np.var(dt_intervals)
         
+        length_speed_ratio = train_length / last_speed if last_speed > 0 else 0
+        distance_length_ratio = distance_remaining / train_length if train_length > 0 else 0
+        
         features = {
             'distance_remaining': distance_remaining,
+            'train_length': train_length,
             'last_speed': last_speed,
             'last_accel': last_accel,
             'speed_trend': speed_trend,
             'speed_variance': speed_variance,
             'time_variance': time_variance,
             'avg_speed_overall': np.mean(avg_speeds),
+            'length_speed_ratio': length_speed_ratio,
+            'distance_length_ratio': distance_length_ratio,
             'eta_actual': eta_actual,
-            'eta_physics': eta_physics
+            'etd_actual': etd_actual,
+            'eta_physics': eta_physics,
+            'etd_physics': etd_physics
         }
         
         for i, dt in enumerate(dt_intervals):
@@ -132,10 +153,12 @@ class FeatureExtractor:
         output_path = self.output_dir / 'features.csv'
         features_df.to_csv(output_path, index=False)
         
-        physics_mae = np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics']))
+        eta_physics_mae = np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics']))
+        etd_physics_mae = np.mean(np.abs(features_df['etd_actual'] - features_df['etd_physics']))
         
         Logger.log(f"Extracted {len(features_df)} feature sets")
-        Logger.log(f"Physics baseline MAE: {physics_mae:.3f}s")
+        Logger.log(f"ETA physics baseline MAE: {eta_physics_mae:.3f}s")
+        Logger.log(f"ETD physics baseline MAE: {etd_physics_mae:.3f}s")
         Logger.log(f"Saved to {output_path}")
         
         return features_df

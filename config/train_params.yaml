@@ -1,0 +1,11 @@
+max_speed: 50.0
+avg_speed: 44.3649753636321
+max_acceleration: 0.0
+max_deceleration: 0.0
+train_lengths:
+- 100.0
+- 150.0
+- 200.0
+- 250.0
+avg_length: 174.325
+n_samples: 2000

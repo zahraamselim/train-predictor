@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<nodes>
-    <node id="track_start" x="-2000" y="0" type="priority"/>
-    <node id="crossing" x="0" y="0" type="rail_crossing"/>
-    <node id="track_end" x="1000" y="0" type="priority"/>
-</nodes>
