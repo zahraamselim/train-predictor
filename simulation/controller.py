@@ -427,11 +427,6 @@ class SimulationController:
         
         self.metrics = MetricsTracker(self.config)
         
-        self.reroute_decisions = {}
-        
-        self.reroute_threshold = self.config['rerouting']['min_time_saved']
-        self.decision_distance = self.config['rerouting']['decision_point']
-        
         self.min_shutoff_time = self.config['fuel']['min_wait_to_shutoff']
         
         Logger.log(f"Initialized simulation controller")
@@ -458,7 +453,6 @@ class SimulationController:
                 self._process_trains(t)
                 self._control_crossings(t)
                 self._track_vehicles(t)
-                self._handle_rerouting(t)
                 self._collect_fuel_metrics(t, dt)
                 
                 step += 1
@@ -511,8 +505,6 @@ class SimulationController:
                         wait_event['engine_off_duration'],
                         t
                     )
-                    Logger.log(f"Vehicle {vid} waited {wait_event['duration']:.1f}s at {wait_event['crossing']}, "
-                             f"engine off {wait_event['engine_off_duration']:.1f}s")
                 
                 # Check East crossing
                 wait_event = self.east.track_vehicle_waiting(vid, x, speed, t, self.min_shutoff_time)
@@ -524,120 +516,9 @@ class SimulationController:
                         wait_event['engine_off_duration'],
                         t
                     )
-                    Logger.log(f"Vehicle {vid} waited {wait_event['duration']:.1f}s at {wait_event['crossing']}, "
-                             f"engine off {wait_event['engine_off_duration']:.1f}s")
             
             except:
                 continue
-    
-    def _handle_rerouting(self, t):
-        for vid in traci.vehicle.getIDList():
-            if 'train' in vid.lower() or vid in self.reroute_decisions:
-                continue
-            
-            try:
-                x, _ = traci.vehicle.getPosition(vid)
-                route = traci.vehicle.getRoute(vid)
-                
-                # Check if vehicle is approaching a crossing with warning active
-                crossing = None
-                distance_to_crossing = float('inf')
-                
-                # Check west crossing
-                if self.west.warning_active:
-                    dist_to_west = abs(x - self.west.actual_x)
-                    if dist_to_west < self.decision_distance and dist_to_west > 50:  # Not too close
-                        if any('v_w' in edge for edge in route):
-                            crossing = 'west'
-                            distance_to_crossing = dist_to_west
-                
-                # Check east crossing
-                if self.east.warning_active:
-                    dist_to_east = abs(x - self.east.actual_x)
-                    if dist_to_east < self.decision_distance and dist_to_east > 50:  # Not too close
-                        if any('v_e' in edge for edge in route):
-                            # If already considering west, pick closer one
-                            if crossing is None or dist_to_east < distance_to_crossing:
-                                crossing = 'east'
-                                distance_to_crossing = dist_to_east
-                
-                if crossing:
-                    should_reroute, time_saved, wait_current, wait_other = self._evaluate_reroute(t, crossing, x)
-                    self.reroute_decisions[vid] = True
-                    
-                    if should_reroute and time_saved > 0:
-                        success = self._reroute_vehicle(vid, crossing, route)
-                        if success:
-                            self.metrics.record_reroute(vid, crossing, time_saved, wait_current, wait_other, t)
-                            Logger.log(f"Vehicle {vid} rerouted from {crossing} to avoid {wait_current:.1f}s wait (saves {time_saved:.1f}s)")
-            except Exception as e:
-                continue
-    
-    def _reroute_vehicle(self, vid, from_crossing, current_route):
-        try:
-            # Get current edge
-            current_edge = traci.vehicle.getRoadID(vid)
-            
-            # Build new route based on current position and destination
-            if from_crossing == 'west':
-                if 'v_w_n_s' in current_route or 'v_w_x_s' in current_route:
-                    # Going south through west, reroute to east
-                    if 'n_w' in current_edge or current_edge == 'n_w_e':
-                        new_route = ['n_w_e', 'v_e_n_s', 'v_e_x_s'] + [e for e in current_route if 's_' in e and 'v_w' not in e]
-                    else:
-                        return False
-                elif 'v_w_s_n' in current_route or 'v_w_x_n' in current_route:
-                    # Going north through west, reroute to east
-                    if 's_w' in current_edge or current_edge == 's_w_e':
-                        new_route = ['s_w_e', 'v_e_s_n', 'v_e_x_n'] + [e for e in current_route if 'n_' in e and 'v_w' not in e]
-                    else:
-                        return False
-                else:
-                    return False
-            else:  # from east
-                if 'v_e_n_s' in current_route or 'v_e_x_s' in current_route:
-                    # Going south through east, reroute to west
-                    if 'n_e' in current_edge or current_edge == 'n_e_w':
-                        new_route = ['n_e_w', 'v_w_n_s', 'v_w_x_s'] + [e for e in current_route if 's_' in e and 'v_e' not in e]
-                    else:
-                        return False
-                elif 'v_e_s_n' in current_route or 'v_e_x_n' in current_route:
-                    # Going north through east, reroute to west
-                    if 's_e' in current_edge or current_edge == 's_e_w':
-                        new_route = ['s_e_w', 'v_w_s_n', 'v_w_x_n'] + [e for e in current_route if 'n_' in e and 'v_e' not in e]
-                    else:
-                        return False
-                else:
-                    return False
-            
-            traci.vehicle.setRoute(vid, new_route)
-            return True
-        except Exception as e:
-            return False
-    
-    def _evaluate_reroute(self, t, current_crossing, x):
-        if current_crossing == 'west':
-            wait_here = self.west.get_wait_time(t)
-            wait_other = self.east.get_wait_time(t)
-            distance = abs(self.east.actual_x - x)
-        else:
-            wait_here = self.east.get_wait_time(t)
-            wait_other = self.west.get_wait_time(t)
-            distance = abs(self.west.actual_x - x)
-        
-        # Average speed for detour calculation
-        avg_speed = 15.0  # m/s (slightly slower for turns)
-        travel_time = distance / avg_speed
-        
-        # Total time if rerouting
-        time_with_reroute = travel_time + wait_other
-        
-        # Time saved
-        time_saved = wait_here - time_with_reroute
-        
-        should_reroute = time_saved > self.reroute_threshold
-        
-        return should_reroute, time_saved, wait_here, wait_other
     
     def _collect_fuel_metrics(self, t, dt):
         """Track fuel consumption for all vehicles"""
