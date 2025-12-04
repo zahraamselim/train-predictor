@@ -1,51 +1,37 @@
-# Simulation Configuration
-# Uses calculated thresholds to run performance evaluation
+network:
+  road_separation: 200
+  crossing_distance: 300
+  road_length: 2000
+
+traffic:
+  cars_per_hour: 300
+  train_interval: 180
+
+crossings:
+  west:
+    sensors: [1200, 800, 400]
+    close_before_arrival: 8.0
+    open_after_departure: 5.0
+    warning_time: 25.0
+
+  east:
+    sensors: [1500, 900, 450]
+    close_before_arrival: 10.0
+    open_after_departure: 3.0
+    warning_time: 30.0
+
+fuel:
+  driving: 0.08
+  idling: 0.01
+  engine_off: 0.0
+  co2_per_liter: 2.31
+  min_wait_to_shutoff: 5.0
+  engine_off_factor: 0.7
+
+rerouting:
+  min_time_saved: 8.0
+  decision_point: 180
 
 simulation:
-  duration: 3600 # 1 hour simulation
-  step_length: 0.1
-  train_period: 300 # Train every 5 minutes for realistic traffic
-
-network:
-  # Main crossing positions
-  crossing_w: -200.0
-  crossing_e: 200.0
-
-  # Intersection positions (for notifications)
-  intersections:
-    west: -200.0
-    east: 200.0
-
-train:
-  min_speed: 25.0
-  max_speed: 38.0
-  typical_speed: 33.33
-  length: 150.0
-
-vehicle:
-  max_speed: 20.0
-  typical_speed: 16.67
-  decel: 4.5
-  accel: 2.6
-
-# These will be loaded from thresholds_calculated.yaml
-# Left here for reference/fallback
-safety:
-  margin_close: 2.0
-  margin_open: 3.0
-  driver_reaction: 2.5
-  engine_off_threshold: 5.0
-
-metrics:
-  fuel_rate_driving: 0.08 # L/s while driving
-  fuel_rate_idling: 0.01 # L/s while idling
-  fuel_rate_off: 0.0 # L/s engine off
-  co2_per_liter: 2.31 # kg CO2 per liter fuel
-
-hardware:
-  simulation_scale: 50 # For visualization scaling
-  hardware_scale: 0.02 # For hardware deployment
-
-output:
-  metrics_dir: outputs/metrics
-  results_dir: outputs/results
+  duration: 1200
+  step_size: 0.1

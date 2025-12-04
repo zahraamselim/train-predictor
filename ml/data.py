@@ -27,17 +27,54 @@ class Data:
         self.sensors = self.config['sensors']
     
     def generate_train_params(self, n_samples):
-        """Generate random train parameters for diversity"""
+        """Generate random train parameters with realistic operating profiles"""
         np.random.seed(self.config['training']['random_seed'])
         
         params = []
         for _ in range(n_samples):
+            # All trains can go up to 50 m/s (speed_factor = 1.0)
+            # Variation comes from depart_speed and accel/decel
+            
+            # Choose realistic train operating scenario
+            scenario = np.random.choice(['fast', 'moderate', 'slow', 'accelerating', 'decelerating'])
+            
+            if scenario == 'fast':
+                # Fast train, already at high speed, maintains it
+                depart_speed = np.random.uniform(40, 48)
+                accel = np.random.uniform(0.3, 0.8)  # Low accel (already fast)
+                decel = np.random.uniform(0.3, 0.8)  # Low decel (maintains speed)
+                
+            elif scenario == 'moderate':
+                # Regular freight train, steady moderate speed
+                depart_speed = np.random.uniform(30, 40)
+                accel = np.random.uniform(0.5, 1.2)
+                decel = np.random.uniform(0.5, 1.2)
+                
+            elif scenario == 'slow':
+                # Cautious/heavy train, stays slow
+                depart_speed = np.random.uniform(20, 32)
+                accel = np.random.uniform(0.3, 0.7)  # Low accel (stays slow)
+                decel = np.random.uniform(0.8, 1.5)
+                
+            elif scenario == 'accelerating':
+                # Train gaining speed rapidly
+                depart_speed = np.random.uniform(25, 35)
+                accel = np.random.uniform(1.5, 2.0)  # High accel (speeding up)
+                decel = np.random.uniform(0.5, 1.0)
+                
+            else:  # decelerating
+                # Train slowing down
+                depart_speed = np.random.uniform(35, 45)
+                accel = np.random.uniform(0.3, 0.8)
+                decel = np.random.uniform(1.5, 2.0)  # High decel (slowing down)
+            
             params.append({
-                'depart_speed': np.random.uniform(15, 45),
-                'accel': np.random.uniform(0.5, 2.0),
-                'decel': np.random.uniform(0.5, 2.0),
+                'depart_speed': depart_speed,
+                'accel': accel,
+                'decel': decel,
                 'length': np.random.choice([100, 150, 200, 250]),
-                'speed_factor': 1.0
+                'speed_factor': 1.0,  # All trains CAN go 50 m/s, but behavior varies
+                'scenario': scenario
             })
         
         return params
@@ -62,12 +99,12 @@ class Data:
         if not Path(fcd_file).exists():
             return None
         
-        data = self.parse_fcd(fcd_file, run_id, train_params['length'])
+        data = self.parse_fcd(fcd_file, run_id, train_params['length'], train_params.get('scenario', 'unknown'))
         Path(fcd_file).unlink(missing_ok=True)
         
         return data
     
-    def parse_fcd(self, fcd_file, run_id, train_length):
+    def parse_fcd(self, fcd_file, run_id, train_length, scenario):
         """Parse SUMO FCD output"""
         try:
             tree = ET.parse(fcd_file)
@@ -86,7 +123,8 @@ class Data:
                         'speed': float(vehicle.get('speed')),
                         'acceleration': float(vehicle.get('acceleration', 0)),
                         'length': train_length,
-                        'run_id': run_id
+                        'run_id': run_id,
+                        'scenario': scenario
                     })
         
         return pd.DataFrame(data) if data else None
@@ -103,6 +141,7 @@ class Data:
         train_params = self.generate_train_params(n_samples)
         all_data = []
         successful = 0
+        scenario_counts = {}
         
         for i, params in enumerate(train_params):
             df = self.run_simulation(params, i)
@@ -110,6 +149,8 @@ class Data:
             if df is not None and len(df) > 10:
                 all_data.append(df)
                 successful += 1
+                scenario = params.get('scenario', 'unknown')
+                scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
                 
                 if (i + 1) % 100 == 0:
                     Logger.log(f"Progress: {successful}/{i+1} ({successful/(i+1)*100:.1f}%)")
@@ -123,7 +164,14 @@ class Data:
         combined.to_csv(output_path, index=False)
         
         Logger.log(f"Generated {successful} trajectories with {len(combined)} data points")
+        Logger.log(f"Success rate: {successful}/{len(train_params)} ({successful/len(train_params)*100:.1f}%)")
+        Logger.log("Scenario distribution:")
+        for scenario, count in sorted(scenario_counts.items()):
+            Logger.log(f"  {scenario}: {count} ({count/successful*100:.1f}%)")
         Logger.log(f"Saved to {output_path}")
+        
+        if successful < n_samples * 0.85:
+            Logger.log(f"WARNING: Success rate below 85%. Consider increasing sim_duration in config.yaml")
         
         return combined
     
@@ -135,6 +183,7 @@ class Data:
         """Extract features from one trajectory"""
         run_df = run_df.sort_values('time')
         train_length = run_df['length'].iloc[0]
+        scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else 'unknown'
         
         triggers = {}
         for sensor_id, sensor_pos in self.sensors.items():
@@ -183,6 +232,15 @@ class Data:
         avg_speed_01 = (positions[1] - positions[0]) / time_01 if time_01 > 0 else 0
         avg_speed_12 = (positions[2] - positions[1]) / time_12 if time_12 > 0 else 0
         
+        # Calculate acceleration trend (is train speeding up or slowing down?)
+        accel_01 = (speeds[1] - speeds[0]) / time_01 if time_01 > 0 else 0
+        accel_12 = (speeds[2] - speeds[1]) / time_12 if time_12 > 0 else 0
+        
+        # Predicted speed at crossing (extrapolate from acceleration trend)
+        time_to_crossing = distance_remaining / last_speed if last_speed > 0 else 0
+        predicted_crossing_speed = last_speed + (accel_12 * time_to_crossing)
+        predicted_crossing_speed = max(5.0, min(50.0, predicted_crossing_speed))  # Clamp to realistic range
+        
         return {
             'distance_remaining': distance_remaining,
             'train_length': train_length,
@@ -192,10 +250,13 @@ class Data:
             'time_12': time_12,
             'avg_speed_01': avg_speed_01,
             'avg_speed_12': avg_speed_12,
+            'accel_trend': accel_12,  # NEW: Recent acceleration
+            'predicted_speed_at_crossing': predicted_crossing_speed,  # NEW: Extrapolated speed
             'eta_actual': eta_actual,
             'etd_actual': etd_actual,
             'eta_physics': eta_physics,
-            'etd_physics': etd_physics
+            'etd_physics': etd_physics,
+            'scenario': scenario
         }
     
     def extract_features(self, trajectory_df):
@@ -224,6 +285,8 @@ class Data:
         etd_physics_error = np.mean(np.abs(features_df['etd_actual'] - features_df['etd_physics']))
         
         Logger.log(f"Extracted {len(features_df)} feature sets")
+        Logger.log(f"Speed at last sensor - Mean: {features_df['last_speed'].mean():.2f} m/s, Std: {features_df['last_speed'].std():.2f} m/s")
+        Logger.log(f"ETA actual - Mean: {features_df['eta_actual'].mean():.2f}s, Std: {features_df['eta_actual'].std():.2f}s")
         Logger.log(f"ETA physics baseline error: {eta_physics_error:.3f}s")
         Logger.log(f"ETD physics baseline error: {etd_physics_error:.3f}s")
         Logger.log(f"Saved to {output_path}")
@@ -240,7 +303,9 @@ class Data:
         ax = axes[0, 0]
         for i, run_id in enumerate(sample_runs):
             run_df = trajectory_df[trajectory_df['run_id'] == run_id]
-            ax.plot(run_df['time'], run_df['pos'], label=f'Train {run_id}', 
+            scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else ''
+            ax.plot(run_df['time'], run_df['pos'], 
+                   label=f'Train {run_id} ({scenario})', 
                    color=colors[i], linewidth=2, alpha=0.8)
         
         for name, pos in self.sensors.items():
@@ -253,39 +318,45 @@ class Data:
         
         ax.set_xlabel('Time (seconds)', fontsize=12)
         ax.set_ylabel('Position (meters)', fontsize=12)
-        ax.set_title('Sample Train Trajectories', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=9)
+        ax.set_title('Sample Train Trajectories (Variable Speed Profiles)', fontsize=14, fontweight='bold')
+        ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
         ax = axes[0, 1]
         for i, run_id in enumerate(sample_runs):
             run_df = trajectory_df[trajectory_df['run_id'] == run_id]
-            ax.plot(run_df['time'], run_df['speed'], label=f'Train {run_id}',
+            scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else ''
+            ax.plot(run_df['time'], run_df['speed'], 
+                   label=f'Train {run_id} ({scenario})',
                    color=colors[i], linewidth=2, alpha=0.8)
         
         ax.set_xlabel('Time (seconds)', fontsize=12)
         ax.set_ylabel('Speed (m/s)', fontsize=12)
-        ax.set_title('Train Speed Profiles', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=9)
+        ax.set_title('Train Speed Profiles (Now with Variance!)', fontsize=14, fontweight='bold')
+        ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
         ax = axes[1, 0]
         for i, run_id in enumerate(sample_runs):
             run_df = trajectory_df[trajectory_df['run_id'] == run_id]
-            ax.plot(run_df['time'], run_df['acceleration'], label=f'Train {run_id}',
+            scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else ''
+            ax.plot(run_df['time'], run_df['acceleration'], 
+                   label=f'Train {run_id} ({scenario})',
                    color=colors[i], linewidth=2, alpha=0.8)
         
         ax.axhline(0, color='black', linestyle='-', linewidth=1)
         ax.set_xlabel('Time (seconds)', fontsize=12)
         ax.set_ylabel('Acceleration (m/s²)', fontsize=12)
         ax.set_title('Train Acceleration Profiles', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=9)
+        ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
         ax = axes[1, 1]
         for i, run_id in enumerate(sample_runs):
             run_df = trajectory_df[trajectory_df['run_id'] == run_id]
-            ax.plot(run_df['pos'], run_df['speed'], label=f'Train {run_id}',
+            scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else ''
+            ax.plot(run_df['pos'], run_df['speed'], 
+                   label=f'Train {run_id} ({scenario})',
                    color=colors[i], linewidth=2, alpha=0.8)
         
         for name, pos in self.sensors.items():
@@ -297,7 +368,7 @@ class Data:
         ax.set_xlabel('Position (meters)', fontsize=12)
         ax.set_ylabel('Speed (m/s)', fontsize=12)
         ax.set_title('Speed vs Position', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=9)
+        ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
         plt.tight_layout()

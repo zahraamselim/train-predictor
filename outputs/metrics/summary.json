@@ -1,0 +1,11 @@
+{
+  "vehicles_tracked": 500,
+  "wait_events": 0,
+  "reroute_events": 0,
+  "total_savings": {
+    "total_fuel_saved_liters": 0.0,
+    "total_co2_saved_kg": 0.0,
+    "fuel_saved_from_engine_off_liters": 0,
+    "fuel_saved_from_rerouting_liters": 0
+  }
+}

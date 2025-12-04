@@ -9,7 +9,7 @@ import json
 import yaml
 import matplotlib.pyplot as plt
 from pathlib import Path
-from sklearn.linear_model import SGDRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
@@ -30,29 +30,31 @@ class Model:
         self.results_dir = Path('outputs/results')
         self.results_dir.mkdir(parents=True, exist_ok=True)
     
-    def prepare_data(self, features_df, target_col):
+    def prepare_data(self, features_df, target_col, use_extended_features=False):
         """Split data into train/validation/test sets"""
+        # Base 8 features for ETA
         feature_cols = [
             'distance_remaining', 'train_length', 'last_speed', 'speed_change',
             'time_01', 'time_12', 'avg_speed_01', 'avg_speed_12'
         ]
+        
+        # Add 2 extra features for ETD (helps predict clearance speed)
+        if use_extended_features:
+            feature_cols.extend(['accel_trend', 'predicted_speed_at_crossing'])
         
         X = features_df[feature_cols]
         y = features_df[target_col]
         
         test_size = self.config['model']['test_size']
         
-        # Split into train+val and test
         X_temp, X_test, y_temp, y_test = train_test_split(
             X, y, test_size=test_size, random_state=42
         )
         
-        # Split train+val into train and validation
         X_train, X_val, y_train, y_val = train_test_split(
             X_temp, y_temp, test_size=0.2, random_state=42
         )
         
-        # Standardize features
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
         X_val_scaled = scaler.transform(X_val)
@@ -61,27 +63,44 @@ class Model:
         return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, feature_cols, scaler
     
     def train_model(self, X_train, y_train, X_val, y_val):
-        """Train model with iterative learning"""
-        n_epochs = 50
+        """Train model with Gradient Boosting"""
+        n_estimators = 200
         train_losses = []
         val_losses = []
         train_accs = []
         val_accs = []
         
-        model = SGDRegressor(
-            max_iter=1,
-            warm_start=True,
-            learning_rate='constant',
-            eta0=0.01,
+        model = GradientBoostingRegressor(
+            n_estimators=n_estimators,
+            learning_rate=0.05,
+            max_depth=5,
+            min_samples_split=3,
+            min_samples_leaf=2,
+            subsample=0.9,
+            max_features='sqrt',
             random_state=42,
-            tol=None
+            validation_fraction=0.15,
+            n_iter_no_change=15,
+            tol=0.00001
         )
         
-        for epoch in range(n_epochs):
-            model.fit(X_train, y_train)
+        model.fit(X_train, y_train)
+        
+        for i in range(1, n_estimators + 1):
+            model_partial = GradientBoostingRegressor(
+                n_estimators=i,
+                learning_rate=0.05,
+                max_depth=5,
+                min_samples_split=3,
+                min_samples_leaf=2,
+                subsample=0.9,
+                max_features='sqrt',
+                random_state=42
+            )
+            model_partial.fit(X_train, y_train)
             
-            y_train_pred = model.predict(X_train)
-            y_val_pred = model.predict(X_val)
+            y_train_pred = model_partial.predict(X_train)
+            y_val_pred = model_partial.predict(X_val)
             
             train_loss = mean_squared_error(y_train, y_train_pred)
             val_loss = mean_squared_error(y_val, y_val_pred)
@@ -176,6 +195,8 @@ class Model:
         """Create visualization plots"""
         fig = plt.figure(figsize=(16, 10))
         
+        train_r2 = r2_score(metrics['train_actual'], metrics['train_predictions'])
+        
         ax1 = plt.subplot(2, 3, 1)
         ax1.scatter(metrics['train_actual'], metrics['train_predictions'], alpha=0.5, s=20)
         min_val = min(metrics['train_actual'].min(), metrics['train_predictions'].min())
@@ -183,7 +204,7 @@ class Model:
         ax1.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect prediction')
         ax1.set_xlabel('Actual Time (seconds)', fontsize=11)
         ax1.set_ylabel('Predicted Time (seconds)', fontsize=11)
-        ax1.set_title(f'{model_name} - Training Data\nR² = {metrics["test_r2"]:.3f}', 
+        ax1.set_title(f'{model_name} - Training Data\nR² = {train_r2:.3f}', 
                      fontsize=12, fontweight='bold')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
@@ -212,15 +233,14 @@ class Model:
         ax3.grid(True, alpha=0.3, axis='y')
         
         ax4 = plt.subplot(2, 3, 4)
-        coefficients = model.coef_ * scaler.scale_
-        colors = ['green' if c > 0 else 'red' for c in coefficients]
-        ax4.barh(range(len(feature_cols)), coefficients, color=colors, alpha=0.7)
+        importances = model.feature_importances_
+        colors = ['green' if imp > np.median(importances) else 'orange' for imp in importances]
+        ax4.barh(range(len(feature_cols)), importances, color=colors, alpha=0.7)
         ax4.set_yticks(range(len(feature_cols)))
         ax4.set_yticklabels(feature_cols, fontsize=9)
-        ax4.set_xlabel('Coefficient Value', fontsize=11)
-        ax4.set_title('Feature Importance\n(positive = increases time, negative = decreases time)', 
+        ax4.set_xlabel('Feature Importance', fontsize=11)
+        ax4.set_title('Feature Importance\n(higher = more important)', 
                      fontsize=12, fontweight='bold')
-        ax4.axvline(0, color='black', lw=1)
         ax4.grid(True, alpha=0.3, axis='x')
         
         ax5 = plt.subplot(2, 3, 5)
@@ -290,8 +310,10 @@ class Model:
                 'etd_std': float(features_df['etd_actual'].std())
             },
             'model_info': {
-                'type': 'SGDRegressor',
-                'n_features': 8
+                'type': 'GradientBoosting',
+                'eta_features': 8,
+                'etd_features': 10,
+                'n_estimators': 200
             }
         }
         
@@ -317,6 +339,7 @@ class Model:
         
         print("\nETA Model (Time Until Train Arrives):")
         metrics = results['eta_metrics']
+        print(f"  Features: {results['model_info']['eta_features']}")
         print(f"  Test error: {metrics['test_error']:.3f}s")
         print(f"  R² score: {metrics['test_r2']:.3f}")
         print(f"  Physics baseline: {metrics['physics_error']:.3f}s")
@@ -324,6 +347,7 @@ class Model:
         
         print("\nETD Model (Time Until Train Clears):")
         metrics = results['etd_metrics']
+        print(f"  Features: {results['model_info']['etd_features']} (includes accel_trend + predicted_speed)")
         print(f"  Test error: {metrics['test_error']:.3f}s")
         print(f"  R² score: {metrics['test_r2']:.3f}")
         print(f"  Physics baseline: {metrics['physics_error']:.3f}s")
@@ -331,7 +355,7 @@ class Model:
         
         print("\nModel Structure:")
         print(f"  Type: {results['model_info']['type']}")
-        print(f"  Features: {results['model_info']['n_features']}")
+        print(f"  Trees: {results['model_info']['n_estimators']}")
         print()
     
     def train(self, features_path=None):
@@ -347,9 +371,9 @@ class Model:
         
         features_df = pd.read_csv(features_path)
         
-        Logger.log("\nTraining ETA model")
+        Logger.log("\nTraining ETA model (8 features)")
         X_train, X_val, X_test, y_train, y_val, y_test, feature_cols, scaler = self.prepare_data(
-            features_df, 'eta_actual'
+            features_df, 'eta_actual', use_extended_features=False
         )
         Logger.log(f"Train: {len(X_train)}, Val: {len(X_val)}, Test: {len(X_test)}")
         
@@ -363,9 +387,9 @@ class Model:
         self.plot_results(eta_metrics, 'ETA', feature_cols, eta_model, scaler)
         self.save_model(eta_model, scaler, feature_cols, eta_metrics, 'eta_model.pkl')
         
-        Logger.log("\nTraining ETD model")
+        Logger.log("\nTraining ETD model (10 features - includes acceleration prediction)")
         X_train, X_val, X_test, y_train, y_val, y_test, feature_cols, scaler = self.prepare_data(
-            features_df, 'etd_actual'
+            features_df, 'etd_actual', use_extended_features=True
         )
         
         etd_model, etd_history = self.train_model(X_train, y_train, X_val, y_val)

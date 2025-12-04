@@ -8,7 +8,7 @@ from utils.logger import Logger
 
 
 class NetworkGenerator:
-    def __init__(self, config_path='config/ml.yaml'):
+    def __init__(self, config_path='ml/config.yaml'):
         with open(config_path) as f:
             self.config = yaml.safe_load(f)
         
@@ -118,8 +118,8 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Generate training network')
-    parser.add_argument('--config', default='config/ml.yaml', help='Config file path')
+    parser.add_argument('--config', default='ml/config.yaml', help='Config file path')
     args = parser.parse_args()
     
-    generato(args.config)
+    generator = NetworkGenerator(args.config)
     generator.generate()

@@ -1,0 +1,19 @@
+============================================================
+RAILROAD CROSSING SIMULATION RESULTS
+============================================================
+
+Vehicles tracked: 500
+
+============================================================
+TOTAL ENVIRONMENTAL IMPACT
+============================================================
+  Total fuel saved: 0.00 liters
+    - From engine shutoff: 0.00 liters
+    - From smart rerouting: 0.00 liters
+  Total CO₂ emissions reduced: 0.00 kg
+
+  Environmental Context:
+    - Equivalent to 0.0 typical car refuelings saved
+    - Equivalent to 0 km of car driving emissions avoided
+
+============================================================

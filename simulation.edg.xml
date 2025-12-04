@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edges>
+    <edge id="n_in_w" from="n_west" to="nw_junction" numLanes="1" speed="16.67"/>
+    <edge id="n_w_e" from="nw_junction" to="ne_junction" numLanes="1" speed="16.67"/>
+    <edge id="n_out_e" from="ne_junction" to="n_east" numLanes="1" speed="16.67"/>
+    
+    <edge id="n_in_e" from="n_east" to="ne_junction" numLanes="1" speed="16.67"/>
+    <edge id="n_e_w" from="ne_junction" to="nw_junction" numLanes="1" speed="16.67"/>
+    <edge id="n_out_w" from="nw_junction" to="n_west" numLanes="1" speed="16.67"/>
+    
+    <edge id="s_in_w" from="s_west" to="sw_junction" numLanes="1" speed="16.67"/>
+    <edge id="s_w_e" from="sw_junction" to="se_junction" numLanes="1" speed="16.67"/>
+    <edge id="s_out_e" from="se_junction" to="s_east" numLanes="1" speed="16.67"/>
+    
+    <edge id="s_in_e" from="s_east" to="se_junction" numLanes="1" speed="16.67"/>
+    <edge id="s_e_w" from="se_junction" to="sw_junction" numLanes="1" speed="16.67"/>
+    <edge id="s_out_w" from="sw_junction" to="s_west" numLanes="1" speed="16.67"/>
+    
+    <edge id="v_w_n_s" from="nw_junction" to="west_crossing" numLanes="1" speed="13.89"/>
+    <edge id="v_w_x_s" from="west_crossing" to="sw_junction" numLanes="1" speed="13.89"/>
+    <edge id="v_w_s_n" from="sw_junction" to="west_crossing" numLanes="1" speed="13.89"/>
+    <edge id="v_w_x_n" from="west_crossing" to="nw_junction" numLanes="1" speed="13.89"/>
+    
+    <edge id="v_e_n_s" from="ne_junction" to="east_crossing" numLanes="1" speed="13.89"/>
+    <edge id="v_e_x_s" from="east_crossing" to="se_junction" numLanes="1" speed="13.89"/>
+    <edge id="v_e_s_n" from="se_junction" to="east_crossing" numLanes="1" speed="13.89"/>
+    <edge id="v_e_x_n" from="east_crossing" to="ne_junction" numLanes="1" speed="13.89"/>
+    
+    <edge id="rail_in" from="rail_west" to="west_crossing" numLanes="1" speed="33.33" allow="rail"/>
+    <edge id="rail_mid" from="west_crossing" to="east_crossing" numLanes="1" speed="33.33" allow="rail"/>
+    <edge id="rail_out" from="east_crossing" to="rail_east" numLanes="1" speed="33.33" allow="rail"/>
+</edges>

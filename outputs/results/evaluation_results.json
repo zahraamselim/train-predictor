@@ -1,31 +1,33 @@
 {
   "eta_metrics": {
-    "train_error": 0.01484818499603181,
-    "val_error": 0.01585231097362342,
-    "test_error": 0.014033671509284095,
-    "test_rmse": 0.0247681190028772,
-    "test_r2": -0.00939484811304836,
-    "physics_error": 0.016152425544894596,
-    "improvement": 13.117249974138959
+    "train_error": 0.008539743872904727,
+    "val_error": 0.011388710297217441,
+    "test_error": 0.01011785136911203,
+    "test_rmse": 0.024480358525035464,
+    "test_r2": 0.9922119571081872,
+    "physics_error": 0.0339036331380299,
+    "improvement": 70.15702910682225
   },
   "etd_metrics": {
-    "train_error": 0.02036014618072938,
-    "val_error": 0.021837236576988252,
-    "test_error": 0.017653410640658455,
-    "test_rmse": 0.026056630830173157,
-    "test_r2": 0.9994503762578201,
-    "physics_error": 0.02314965598453116,
-    "improvement": 23.74223335130921
+    "train_error": 0.018365234784572776,
+    "val_error": 0.04913346863018314,
+    "test_error": 0.04976509289621615,
+    "test_rmse": 0.13093414785228322,
+    "test_r2": 0.9880380555879826,
+    "physics_error": 0.05975772859637155,
+    "improvement": 16.721913524608347
   },
   "dataset_stats": {
     "n_samples": 1000,
-    "eta_mean": 9.008700000000001,
-    "eta_std": 0.033696371398793744,
-    "etd_mean": 12.5395,
-    "etd_std": 1.1226264027003998
+    "eta_mean": 9.066899999999999,
+    "eta_std": 0.25950285495873016,
+    "etd_mean": 12.588799999999999,
+    "etd_std": 1.1642809412294395
   },
   "model_info": {
-    "type": "SGDRegressor",
-    "n_features": 8
+    "type": "GradientBoosting",
+    "eta_features": 8,
+    "etd_features": 10,
+    "n_estimators": 200
   }
 }

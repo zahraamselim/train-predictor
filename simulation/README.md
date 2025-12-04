@@ -1,497 +1,437 @@
-# Metrics Collection and Analysis
+# Railroad Crossing Simulation
 
-## Overview
+A realistic simulation of railroad crossings with smart vehicle behavior.
 
-The metrics module collects comprehensive performance data from the level crossing control system, including wait times, queue lengths, fuel consumption, emissions, and driver comfort scores.
+## What This Does
 
-## Pipeline Components
+Simulates a road network with two railroad crossings where:
 
-The metrics pipeline consists of three main modules:
+- Vehicles wait for trains
+- Vehicles turn off engines to save fuel
+- Vehicles can reroute to avoid long waits
+- Each crossing works independently with its own sensors and timing
 
-1. **Network Generator** - Creates SUMO network for metrics collection
-2. **Data Collector** - Runs simulation with full control system and tracks metrics
-3. **Analyzer** - Processes collected data and generates performance reports
-
-## 1. Network Generator (network_generators/metrics.py)
-
-### Purpose
-
-Creates a SUMO network that includes the complete level crossing infrastructure for realistic metrics collection.
-
-### Network Structure
-
-**Crossings and Roads**:
-
-- Two rail crossings: west (-200m) and east (200m)
-- Main roads running parallel north and south
-- Traffic light intersections at crossing points
-- Vertical connector roads crossing the rail
-
-**Traffic Configuration**:
-
-- Main road: 200 vehicles/hour per direction
-- Side roads: 80 vehicles/hour
-- Trucks: 50 vehicles/hour
-- Trains: Configurable period (default 300 seconds)
-
-### Output
-
-Network files in `sumo/metrics/`:
-
-- `metrics.nod.xml` - Node definitions
-- `metrics.edg.xml` - Edge definitions
-- `metrics.net.xml` - Compiled network
-- `metrics.rou.xml` - Traffic flows
-- `metrics.sumocfg` - SUMO configuration
-
-### Configuration
-
-Controlled by `config/simulation.yaml`:
-
-```yaml
-network:
-  crossing_w: -200.0
-  crossing_e: 200.0
-  intersections:
-    west: -200.0
-    east: 200.0
-
-traffic:
-  main_flow: 200
-  side_flow: 80
-  truck_flow: 50
-
-trains:
-  period: 300
-```
-
-## 2. Data Collector (metrics/data_collector.py)
-
-### Purpose
-
-Runs a complete simulation with the crossing control system active, tracking both control decisions and their performance impacts.
-
-### Control System Components
-
-**Train Detection**:
-
-- Three sensors positioned before crossing
-- Calculates ETA/ETD when train triggers sensors
-- Uses physics-based calculations or ML models
-
-**Gate Control**:
-
-- Closes gates at calculated threshold before ETA
-- Opens gates at threshold after ETD clears
-- Logs all gate operations
-
-**Intersection Notification**:
-
-- Notifies upstream intersections at calculated threshold
-- Allows traffic signal coordination
-
-**Engine Management**:
-
-- Identifies vehicles waiting at closed gates
-- Recommends engine shutdown when:
-  - Vehicle waited ≥ 5 seconds
-  - Expected remaining wait ≥ engine_off_threshold
-- Tracks fuel and emissions savings
-
-**Vehicle Rerouting** (planned):
-
-- Evaluates alternative routes when gates close
-- Makes rerouting decisions based on time savings
-
-### Metrics Tracked
-
-**Per-Vehicle Metrics**:
-
-- Travel time (first seen to last seen)
-- Total wait time (stationary with speed < 0.5 m/s)
-- Number of stops
-- Distance traveled
-- Fuel consumed (driving, idling, engine off)
-- CO2 emissions
-- Engine-off time
-- Average and maximum speed
-
-**Wait Events**:
-
-- Vehicle ID
-- Wait duration
-- Time of occurrence
-- Whether engine was off
-
-**Queue Snapshots** (every 10 seconds):
-
-- Queue length at west crossing
-- Queue length at east crossing
-- Total queue length
-- Average wait time
-- Comfort score (0-1)
-
-**System State**:
-
-- Gate status (open/closed)
-- Number of trains being tracked
-- Number of vehicles with engines off
-
-### Fuel and Emissions Model
-
-Fuel consumption rates (L/s):
-
-- Driving: 0.08 L/s
-- Idling: 0.01 L/s
-- Engine off: 0.0 L/s
-
-Emissions:
-
-- 2.31 kg CO2 per liter of fuel
-
-**Fuel Savings Calculation**:
+## The Setup
 
 ```
-fuel_saved = engine_off_time × (idling_rate - off_rate)
-emissions_saved = fuel_saved × co2_per_liter
+        West Crossing          East Crossing
+              |                      |
+═══════════════════════════════════════════ North Road
+              |                      |
+             [X]                    [X]     Gates & Sensors
+------------- RAILWAY -------------------
+             [X]                    [X]     Gates & Sensors
+              |                      |
+═══════════════════════════════════════════ South Road
+              |                      |
+
+        <------ 300m apart ------>
+        (roads 200m apart)
 ```
 
-### Comfort Score Calculation
+## How It Works
 
-Comfort score combines queue length and wait time:
+### Railroad Crossings
 
-```python
-queue_penalty = min(queue_length / 20.0, 1.0)
-wait_penalty = min(avg_wait / 60.0, 1.0)
-comfort = 1.0 - (0.6 × queue_penalty + 0.4 × wait_penalty)
+Each crossing has:
+
+1. **Three sensors** that detect trains at different distances
+2. **Gates** that close before trains arrive
+3. **Warning lights** that alert drivers early
+4. **Countdown timer** showing when gates will close/open
+
+### Train Detection
+
+When a train passes the three sensors:
+
+```
+Sensor 1 (Far)  →  Sensor 2 (Mid)  →  Sensor 3 (Near)  →  Crossing
 ```
 
-Score interpretation:
+The system:
 
-- 1.0 = Perfect (no queues, no waits)
-- 0.8-1.0 = Good (short waits, small queues)
-- 0.6-0.8 = Moderate (moderate waits)
-- 0.4-0.6 = Poor (long waits, large queues)
-- 0.0-0.4 = Very poor (excessive delays)
+1. Records when train passes each sensor
+2. Calculates train speed from sensor data
+3. Predicts when train will arrive (ETA)
+4. Closes gates before arrival
+5. Opens gates after train departs
 
-### Output Files
+### Smart Features
 
-All saved to `outputs/metrics/`:
+**Engine Management (Automatic)**
 
-**wait_events.csv**:
+- System tracks how long vehicles wait in queue
+- After 5 seconds of waiting, assumes engine is turned off
+- Calculates fuel saved: `wait_time × 0.7 × (idling_rate - off_rate)`
+- The 0.7 factor accounts for realistic driver behavior (70% compliance)
+- Tracks total fuel and CO2 savings
 
-```csv
-vehicle_id,wait_duration,time,engine_off
-car_0,12.5,180.0,true
-car_5,8.2,195.0,false
+**Smart Rerouting**
+
+- Warning light turns yellow when train is coming
+- Vehicles near the crossing can choose:
+  - Wait for train to pass
+  - Go to the other crossing (if faster)
+- System calculates which is faster
+- Tracks time saved from rerouting
+
+## Files
+
 ```
-
-**queue_snapshots.csv**:
-
-```csv
-time,queue_west,queue_east,total_queue,avg_wait,comfort
-100.0,3,2,5,8.5,0.85
-110.0,4,3,7,9.2,0.82
-```
-
-**vehicle_metrics.csv**:
-
-```csv
-vehicle_id,travel_time,total_wait,stops,distance_traveled,total_fuel,total_emissions,engine_off_time,avg_speed,max_speed
-car_0,125.5,12.5,2,1850.3,10.04,23.19,8.0,14.8,19.5
-```
-
-**summary.csv**:
-Single-row summary of all metrics
-
-### Simulation Duration
-
-Default: 3600 seconds (1 hour)
-
-- Produces 100+ wait events
-- 50+ queue snapshots
-- 200+ vehicles tracked
-
-Quick mode: 300 seconds (5 minutes)
-
-- For testing only
-
-## 3. Analyzer (metrics/analyzer.py)
-
-### Purpose
-
-Processes collected metrics and generates comprehensive performance analysis.
-
-### Analysis Components
-
-**Wait Time Analysis**:
-
-- Mean, median, standard deviation
-- Min, max values
-- Percentiles (25th, 75th, 95th, 99th)
-- Percentage of waits with engine off
-
-**Queue Analysis**:
-
-- Mean and max queue lengths
-- Mean and min comfort scores
-- Queue length percentiles
-- Time-series patterns
-
-**Vehicle Analysis**:
-
-- Mean travel and wait times per vehicle
-- Mean stops per vehicle
-- Total distance traveled
-- Mean speed
-- Fuel and emissions per vehicle
-- Engine-off time per vehicle
-
-**Efficiency Metrics**:
-
-- Fuel reduction percentage
-- Emissions reduction percentage
-- Average wait per vehicle
-- Average stops per vehicle
-- System comfort score
-
-### Output
-
-Saves to `outputs/results/metrics_analysis.json`:
-
-```json
-{
-  "summary": {
-    "vehicles_tracked": 250,
-    "total_wait_events": 145,
-    "total_engine_off_time": 387.5
-  },
-  "wait_analysis": {
-    "total_waits": 145,
-    "mean": 10.5,
-    "median": 9.2,
-    "std": 3.8,
-    "p95": 16.2,
-    "engine_off_percentage": 65.5
-  },
-  "queue_analysis": {
-    "mean_queue": 4.2,
-    "max_queue": 12,
-    "mean_comfort": 0.82
-  },
-  "vehicle_analysis": {
-    "total_vehicles": 250,
-    "mean_wait_time": 10.5,
-    "fuel_per_vehicle": 9.8,
-    "emissions_per_vehicle": 22.6
-  },
-  "efficiency": {
-    "fuel_reduction_percent": 3.5,
-    "emissions_reduction_percent": 3.5,
-    "fuel_saved_liters": 85.2,
-    "emissions_saved_kg": 196.8,
-    "comfort_score": 0.82
-  }
-}
-```
-
-## Running the Pipeline
-
-### Full Pipeline (1 hour)
-
-```bash
-# Generate network
-python -m network_generators.metrics
-
-# Collect metrics (with control system)
-python -m metrics.data_collector --duration 3600
-
-# Analyze results
-python -m metrics.analyzer
-```
-
-### Quick Pipeline (5 minutes)
-
-```bash
-python -m network_generators.metrics
-python -m metrics.data_collector --duration 300
-python -m metrics.analyzer
-```
-
-### With GUI
-
-```bash
-python -m metrics.data_collector --duration 3600 --gui
-```
-
-## Makefile Targets
-
-```bash
-make metrics-network   # Generate network
-make metrics-collect   # Collect data (1 hour)
-make metrics-quick     # Quick collection (5 min)
-make metrics-analyze   # Analyze existing data
-make metrics-pipeline  # Full pipeline
+simulation/
+├── config.yaml          Configuration (timing, speeds, etc)
+├── network.py           Generate road network
+├── controller.py        Run simulation and control crossings
+├── metrics.py           Track and save results
+└── README.md            This file
 ```
 
 ## Configuration
 
-Edit `config/simulation.yaml`:
+Edit `config.yaml` to change:
 
 ```yaml
-simulation:
-  duration: 3600
-  step_length: 0.1
-
 network:
-  crossing_w: -200.0
-  crossing_e: 200.0
-  intersections:
-    west: -200.0
-    east: 200.0
-
-metrics:
-  fuel_rate_driving: 0.08 # L/s
-  fuel_rate_idling: 0.01 # L/s
-  fuel_rate_off: 0.0 # L/s
-  co2_per_liter: 2.31 # kg CO2/L
+  road_separation: 200 # Distance between north/south roads
+  crossing_distance: 300 # Distance between west/east crossings
+  road_length: 2000 # How long the roads are
 
 traffic:
-  main_flow: 200
-  side_flow: 80
-  truck_flow: 50
+  cars_per_hour: 300 # Number of cars per hour
+  train_interval: 360 # Train every 6 minutes
 
-trains:
-  period: 300
+crossings:
+  west: # West crossing settings
+    sensors: [1200, 800, 400] # Sensor distances from crossing
+    close_before_arrival: 8.0 # Close gates 8s before train
+    open_after_departure: 5.0 # Open gates 5s after train leaves
+    warning_time: 25.0 # Warn drivers 25s before arrival
+
+  east: # East crossing (different timing!)
+    sensors: [1500, 900, 450]
+    close_before_arrival: 10.0
+    open_after_departure: 3.0
+    warning_time: 30.0
+
+fuel:
+  driving: 0.08 # Fuel when driving (liters/second)
+  idling: 0.01 # Fuel when idling (liters/second)
+  engine_off: 0.0 # Fuel when off (liters/second)
+  co2_per_liter: 2.31 # CO2 per liter of fuel
+  min_wait_to_shutoff: 5.0 # Assume engine off after 5s wait
+  engine_off_factor: 0.7 # 70% of wait time engines actually off
+
+rerouting:
+  min_time_saved: 8.0 # Only reroute if saves > 8 seconds
+  decision_point: 180 # Make decision 180m before crossing
 ```
 
-## Integration with Other Modules
+## Running the Simulation
 
-The metrics module uses outputs from:
+### Generate Network
 
-**ML Module**:
+```bash
+make sim-network
+```
 
-- Can use trained models for ETA/ETD prediction (optional)
-- Falls back to physics-based calculations if models unavailable
+### Run Simulation (Text Only)
 
-**Thresholds Module**:
+```bash
+make sim-run
+```
 
-- Loads `config/thresholds_calculated.yaml` for control parameters
-- Uses calculated sensor positions, gate timings, and engine-off thresholds
+### Run with Visual Interface
 
-## Interpreting Results
+```bash
+make sim-gui
+```
 
-### Good Performance Indicators
+### Quick Test (5 minutes)
 
-**Wait Times**:
+```bash
+make sim-quick
+```
 
-- Mean < 15 seconds
-- 95th percentile < 25 seconds
-- Engine-off usage > 50% of waits
+## What You'll See
 
-**Queue Lengths**:
+### In the GUI
 
-- Mean < 5 vehicles
-- Max < 15 vehicles
+**Colors:**
 
-**Comfort Score**:
+- **Realistic vehicles**: Cars look like actual cars (not triangles!)
+- **Realistic trains**: Trains look like actual trains
+- **Green gates**: Open, safe to cross
+- **Red gates**: Closed, train coming/passing
+- **Orange sensors**: Waiting for train
+- **Red sensors**: Train detected
+- **Yellow warning lights**: Train approaching, decide now!
+- **Red warning lights**: Gates closed
+- **Buildings**: Gray/brown structures with roofs
+- **Trees**: Green foliage with brown trunks
+- **Green background**: Grass/landscape
 
-- Mean > 0.75
-- Rarely drops below 0.60
+**Countdown Timer:**
 
-**Efficiency**:
+- Before gate closes: "Closing in X seconds"
+- While closed: "Opening in X seconds"
 
-- Fuel reduction > 2%
-- Emissions reduction > 2%
+### In the Console
 
-### Warning Signs
+```
+[12:00:00] Starting simulation (3600s)
+[12:00:15] West: Train detected
+[12:00:17] West: ETA = 12.3s
+[12:00:25] West: Warning activated
+[12:00:27] West: GATE CLOSED
+[12:00:32] Vehicle car_45 engine OFF (wait=5.2s, remaining=7.1s)
+[12:00:35] Vehicle car_67 rerouted (saves 11.3s)
+[12:00:39] West: Train arrived
+[12:00:42] West: Train departed
+[12:00:47] West: GATE OPENED
+```
 
-**Poor Wait Times**:
+## Understanding the Results
 
-- Mean > 30 seconds
-- 95th percentile > 60 seconds
-- Indicates gates closing too early or opening too late
+After simulation, check `outputs/results/simulation_report.txt`:
 
-**Large Queues**:
+```
+SIMULATION RESULTS
 
-- Mean > 10 vehicles
-- Max > 30 vehicles
-- Indicates insufficient road capacity or excessive train frequency
+Vehicles tracked: 487
 
-**Low Comfort**:
+WAIT TIMES
+  Total events: 234
+  Average: 12.5 seconds
+  Median: 11.8 seconds
+  Maximum: 28.3 seconds
+  95th percentile: 22.1 seconds
 
-- Mean < 0.60
-- Indicates poor user experience
+ENGINE MANAGEMENT
+  Events: 156
+  Percentage: 66.7%
+  Total time engines off: 1,247 seconds
+  Fuel saved: 12.47 liters
+  CO2 saved: 28.81 kg
 
-**Low Efficiency**:
+REROUTING
+  Events: 34
+  Total time saved: 523 seconds
+  Average per reroute: 15.4 seconds
+```
 
-- Fuel reduction < 1%
-- Indicates engine-off threshold too high or insufficient wait times
+## Data Files
+
+All in `outputs/metrics/`:
+
+**wait_times.csv**: When vehicles waited
+
+```csv
+vehicle,crossing,duration,time
+car_0,west,12.5,180.0
+car_5,east,8.2,195.0
+```
+
+**engine_savings.csv**: Engine shutoff events
+
+```csv
+vehicle,duration,fuel_saved,co2_saved,time
+car_0,8.0,0.08,0.185,188.0
+```
+
+**reroutes.csv**: Rerouting decisions
+
+```csv
+vehicle,from,to,time_saved,time
+car_25,west,east,15.3,245.0
+```
+
+## How the Math Works
+
+### ETA Calculation
+
+When train passes 3 sensors:
+
+```
+Distance between sensors: d₁, d₂
+Time between sensors: t₁, t₂
+
+Recent speed: v = d₂ / t₂
+Distance to crossing: d
+ETA = d / v
+```
+
+### Rerouting Decision
+
+```
+Option 1 (Wait):
+  Time = wait_for_train
+
+Option 2 (Reroute):
+  Time = drive_to_other_crossing + wait_at_other_crossing
+
+If (Option 1 - Option 2) > 8 seconds:
+  Reroute!
+```
+
+### Fuel Savings
+
+```
+For each vehicle waiting:
+  if wait_time > 5 seconds:
+    effective_engine_off_time = (wait_time - 5) × 0.7
+    fuel_saved = effective_engine_off_time × (idling_rate - off_rate)
+    fuel_saved = effective_engine_off_time × 0.01 liters/second
+
+CO₂ saved = fuel_saved × 2.31 kg/liter
+```
+
+The 0.7 factor represents that 70% of drivers actually turn off engines, 30% keep idling.
+
+## Experiments to Try
+
+### 1. Different Crossing Timings
+
+Try making crossings very different:
+
+```yaml
+west:
+  close_before_arrival: 5.0 # Aggressive
+east:
+  close_before_arrival: 15.0 # Conservative
+```
+
+**Question**: Which gets fewer complaints? Which is safer?
+
+### 2. Traffic Density
+
+```yaml
+traffic:
+  cars_per_hour: 500 # Heavy traffic
+```
+
+**Question**: How does this affect wait times? Rerouting?
+
+### 3. Train Frequency
+
+```yaml
+traffic:
+  train_interval: 180 # Train every 3 minutes
+```
+
+**Question**: At what point does rerouting stop working?
+
+### 4. Sensor Placement
+
+```yaml
+sensors: [2000, 1000, 500] # Farther away
+```
+
+**Question**: Does earlier detection improve wait times?
+
+### 5. Engine Shutoff Factor
+
+```yaml
+fuel:
+  engine_off_factor: 0.5 # Only 50% compliance
+```
+
+**Question**: How does driver compliance affect total savings?
+
+## Real-World Connection
+
+This simulation models real engineering problems:
+
+**Questions Engineers Face:**
+
+- How far should sensors be from crossings?
+- When should gates close? (Too early = long waits, too late = danger)
+- Should warning systems be integrated?
+- What's the optimal timing?
+
+**What You're Learning:**
+
+- System optimization
+- Trade-offs (safety vs. convenience)
+- Data collection and analysis
+- Real-time decision making
+- Environmental impact assessment
+
+**Careers Using This:**
+
+- Traffic Engineer
+- Transportation Planner
+- Safety Engineer
+- Software Developer
+- Data Analyst
+- Environmental Consultant
+
+## Tips for Success
+
+1. **Start with defaults**: Run once to see normal behavior
+2. **Change one thing**: Modify one parameter at a time
+3. **Compare results**: Run multiple times, compare reports
+4. **Think about trade-offs**: Faster isn't always better
+5. **Real data**: These numbers come from real systems!
+
+## Common Questions
+
+**Q: Why do crossings have different timing?**
+A: In reality, crossings are independent. Train speeds vary, sensor placements differ, and each crossing optimizes for its local conditions.
+
+**Q: Why turn off engines?**
+A: Modern cars have auto-start-stop systems that save fuel and emissions. This simulates that technology.
+
+**Q: Why is rerouting optional?**
+A: In real life, drivers make their own decisions. Warning lights inform them, but they choose whether to reroute.
+
+**Q: Why do some vehicles not reroute even when it's faster?**
+A: Some vehicles are past the decision point when the warning activates. Realistic behavior!
+
+**Q: Can trains slow down?**
+A: Trains can't easily slow down or stop. That's why cars must wait, not trains.
 
 ## Troubleshooting
 
-### No data collected
+**No vehicles appear:**
 
-**Problem**: Empty CSV files
-**Cause**: Simulation error or network missing
-**Solution**: Check `sumo/metrics/` exists, verify SUMO installation
+- Run `make sim-network` first
+- Check that SUMO is installed
 
-### Very high wait times
+**Gates never close:**
 
-**Problem**: Mean wait > 30 seconds
-**Cause**: Gate closure threshold too conservative
-**Solution**: Re-run threshold analysis with more data
+- Check sensor distances in config
+- Ensure trains are spawning (`train_interval`)
 
-### Low engine-off usage
+**No rerouting happens:**
 
-**Problem**: < 20% of waits have engine off
-**Cause**: Engine-off threshold too high
-**Solution**: Reduce `engine_off_threshold` in thresholds config
+- Lower `min_time_saved` threshold
+- Increase train frequency
 
-### Low comfort scores
+**Simulation crashes:**
 
-**Problem**: Mean comfort < 0.70
-**Cause**: Long waits or large queues
-**Solution**:
+- Delete `.xml` files and regenerate network
+- Check config syntax
 
-- Reduce train frequency
-- Increase road capacity
-- Optimize gate timing thresholds
+## Next Steps
 
-### Fuel savings below expectations
+After understanding this simulation:
 
-**Problem**: < 1% fuel reduction
-**Cause**: Short wait times or low engine-off usage
-**Solution**: Expected behavior if traffic is light
-
-## File Dependencies
-
-```
-simulation.yaml + thresholds_calculated.yaml
-    │
-    ├─> network_generators/metrics.py
-    │       │
-    │       └─> metrics.net.xml, metrics.rou.xml
-    │               │
-    │               └─> metrics/data_collector.py
-    │                       │
-    │                       ├─> wait_events.csv
-    │                       ├─> queue_snapshots.csv
-    │                       ├─> vehicle_metrics.csv
-    │                       └─> summary.csv
-    │                               │
-    │                               └─> metrics/analyzer.py
-    │                                       │
-    │                                       └─> metrics_analysis.json
-```
+1. Try the optimization module to find best timings
+2. Try the machine learning module to predict train arrivals
+3. Combine all three for a complete system
 
 ## Summary
 
-The metrics module provides comprehensive performance evaluation of the level crossing control system:
+This simulation shows:
 
-1. Simulates realistic traffic with active control system
-2. Tracks wait times, queues, fuel, emissions, and comfort
-3. Measures effectiveness of engine management and gate timing
-4. Generates detailed performance analysis and efficiency metrics
+- How railroad crossings work
+- How smart systems can save time and fuel
+- How to balance safety, efficiency, and convenience
+- Real engineering trade-offs
 
-These metrics validate that the control system improves safety while minimizing delays and environmental impact.
+Perfect for learning about:
+
+- Traffic engineering
+- System optimization
+- Environmental impact
+- Data-driven decision making
