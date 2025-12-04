@@ -327,9 +327,7 @@ class Model:
     
     def print_summary(self, results):
         """Print evaluation summary"""
-        print("\n" + "="*50)
         print("MODEL EVALUATION SUMMARY")
-        print("="*50)
         
         print("\nDataset:")
         stats = results['dataset_stats']

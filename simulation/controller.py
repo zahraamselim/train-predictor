@@ -1,5 +1,6 @@
 import traci
 import yaml
+import csv
 from pathlib import Path
 from utils.logger import Logger
 from simulation.metrics import MetricsTracker
@@ -24,6 +25,9 @@ class RailroadCrossing:
         self.warning_active = False
         self.countdown = 0
         self.gate_close_time = None
+        
+        # Track vehicles waiting at this crossing
+        self.waiting_vehicles = {}  # vid -> {'start_time': t, 'speed_history': []}
     
     def detect_train(self, train_id, x_position, speed, current_time):
         if train_id not in self.trains:
@@ -110,14 +114,73 @@ class RailroadCrossing:
                 self.warning_active = True
                 Logger.log(f"{self.name}: Warning activated")
     
-    def get_traffic_light_ids(self):
-        """Get the traffic light junction IDs for this crossing"""
-        if self.name == "West":
-            return ["nw_junction", "sw_junction"]
+    def track_vehicle_waiting(self, vid, x_pos, speed, current_time, min_shutoff_time):
+        """Track if vehicle is waiting at this crossing"""
+        # Check if vehicle is near this crossing (within 100m)
+        distance_to_crossing = abs(x_pos - self.actual_x)
+        
+        if distance_to_crossing > 100:
+            # Vehicle not near crossing - if it was waiting, it's done
+            if vid in self.waiting_vehicles:
+                wait_data = self.waiting_vehicles[vid]
+                duration = current_time - wait_data['start_time']
+                
+                # Calculate engine off time (assuming shutoff after min_shutoff_time)
+                engine_off_duration = max(0, duration - min_shutoff_time)
+                
+                del self.waiting_vehicles[vid]
+                
+                return {
+                    'vehicle_id': vid,
+                    'crossing': self.name.lower(),
+                    'start_time': wait_data['start_time'],
+                    'end_time': current_time,
+                    'duration': duration,
+                    'engine_off_duration': engine_off_duration,
+                    'gate_was_closed': wait_data.get('gate_closed', False)
+                }
+            return None
+        
+        # Vehicle is near crossing
+        is_stopped = speed < 0.5  # Consider stopped if speed < 0.5 m/s
+        
+        if is_stopped:
+            # Vehicle is stopped near crossing
+            if vid not in self.waiting_vehicles:
+                # Just started waiting
+                self.waiting_vehicles[vid] = {
+                    'start_time': current_time,
+                    'gate_closed': self.gate_closed
+                }
         else:
-            return ["ne_junction", "se_junction"]
+            # Vehicle is moving near crossing
+            if vid in self.waiting_vehicles:
+                # Was waiting, now moving - completed wait
+                wait_data = self.waiting_vehicles[vid]
+                duration = current_time - wait_data['start_time']
+                
+                # Only count if waited at least 1 second
+                if duration >= 1.0:
+                    engine_off_duration = max(0, duration - min_shutoff_time)
+                    
+                    del self.waiting_vehicles[vid]
+                    
+                    return {
+                        'vehicle_id': vid,
+                        'crossing': self.name.lower(),
+                        'start_time': wait_data['start_time'],
+                        'end_time': current_time,
+                        'duration': duration,
+                        'engine_off_duration': engine_off_duration,
+                        'gate_was_closed': wait_data.get('gate_closed', False)
+                    }
+                else:
+                    del self.waiting_vehicles[vid]
+        
+        return None
     
     def get_wait_time(self, current_time):
+        """Estimate wait time for vehicles approaching this crossing"""
         for train in self.trains.values():
             if train['eta'] is not None and not train['departed']:
                 if train['arrived']:
@@ -369,9 +432,9 @@ class SimulationController:
         self.reroute_threshold = self.config['rerouting']['min_time_saved']
         self.decision_distance = self.config['rerouting']['decision_point']
         
-        # Track gate states for detecting open events
-        self.last_west_closed = False
-        self.last_east_closed = False
+        self.min_shutoff_time = self.config['fuel']['min_wait_to_shutoff']
+        
+        Logger.log(f"Initialized simulation controller")
     
     def run(self, gui=False):
         duration = self.config['simulation']['duration']
@@ -394,9 +457,9 @@ class SimulationController:
                 
                 self._process_trains(t)
                 self._control_crossings(t)
-                self._track_vehicles(t, dt)
+                self._track_vehicles(t)
                 self._handle_rerouting(t)
-                self._collect_metrics(t, dt)
+                self._collect_fuel_metrics(t, dt)
                 
                 step += 1
                 
@@ -409,7 +472,7 @@ class SimulationController:
         
         finally:
             traci.close()
-            self.metrics.finalize_and_save()
+            self._finalize_results()
     
     def _process_trains(self, t):
         for vid in traci.vehicle.getIDList():
@@ -428,73 +491,44 @@ class SimulationController:
         self.west.update_visuals()
         self.east.update_visuals()
     
-    def _track_vehicles(self, t, dt):
-        """Track vehicles waiting at traffic lights near crossings"""
-        
-        # Only track when gate just opened (transition from closed to open)
-        if self.last_west_closed and not self.west.gate_closed:
-            # Gate just opened - count how many were waiting
-            total_waiting = 0
-            for tl_id in self.west.get_traffic_light_ids():
-                try:
-                    # Get number of vehicles waiting at this traffic light
-                    # Sum across all lanes at this junction
-                    lanes = traci.trafficlight.getControlledLanes(tl_id)
-                    for lane in lanes:
-                        total_waiting += traci.lane.getLastStepHaltingNumber(lane)
-                except:
-                    pass
+    def _track_vehicles(self, t):
+        """Track vehicle waiting times at crossings"""
+        for vid in traci.vehicle.getIDList():
+            if 'train' in vid.lower():
+                continue
             
-            if total_waiting > 0:
-                # Calculate how long gate was closed
-                gate_closed_duration = t - self.west.gate_close_time if hasattr(self.west, 'gate_close_time') else 10.0
-                avg_wait = gate_closed_duration * 0.6  # Assume average car waited 60% of closure time
+            try:
+                x, _ = traci.vehicle.getPosition(vid)
+                speed = traci.vehicle.getSpeed(vid)
                 
-                Logger.log(f"{self.west.name}: {total_waiting} vehicles waited (avg {avg_wait:.1f}s)")
+                # Check West crossing
+                wait_event = self.west.track_vehicle_waiting(vid, x, speed, t, self.min_shutoff_time)
+                if wait_event:
+                    self.metrics.record_wait_event(
+                        wait_event['vehicle_id'],
+                        wait_event['crossing'],
+                        wait_event['duration'],
+                        wait_event['engine_off_duration'],
+                        t
+                    )
+                    Logger.log(f"Vehicle {vid} waited {wait_event['duration']:.1f}s at {wait_event['crossing']}, "
+                             f"engine off {wait_event['engine_off_duration']:.1f}s")
                 
-                # Record wait events
-                for i in range(total_waiting):
-                    vid = f"vehicle_west_{int(t)}_{i}"
-                    if avg_wait >= self.metrics.min_wait_to_shutoff:
-                        engine_off = avg_wait - self.metrics.min_wait_to_shutoff
-                    else:
-                        engine_off = 0
-                    self.metrics.record_wait_event(vid, 'west', avg_wait, engine_off, t)
-        
-        if self.last_east_closed and not self.east.gate_closed:
-            total_waiting = 0
-            for tl_id in self.east.get_traffic_light_ids():
-                try:
-                    lanes = traci.trafficlight.getControlledLanes(tl_id)
-                    for lane in lanes:
-                        total_waiting += traci.lane.getLastStepHaltingNumber(lane)
-                except:
-                    pass
+                # Check East crossing
+                wait_event = self.east.track_vehicle_waiting(vid, x, speed, t, self.min_shutoff_time)
+                if wait_event:
+                    self.metrics.record_wait_event(
+                        wait_event['vehicle_id'],
+                        wait_event['crossing'],
+                        wait_event['duration'],
+                        wait_event['engine_off_duration'],
+                        t
+                    )
+                    Logger.log(f"Vehicle {vid} waited {wait_event['duration']:.1f}s at {wait_event['crossing']}, "
+                             f"engine off {wait_event['engine_off_duration']:.1f}s")
             
-            if total_waiting > 0:
-                gate_closed_duration = t - self.east.gate_close_time if hasattr(self.east, 'gate_close_time') else 10.0
-                avg_wait = gate_closed_duration * 0.6
-                
-                Logger.log(f"{self.east.name}: {total_waiting} vehicles waited (avg {avg_wait:.1f}s)")
-                
-                for i in range(total_waiting):
-                    vid = f"vehicle_east_{int(t)}_{i}"
-                    if avg_wait >= self.metrics.min_wait_to_shutoff:
-                        engine_off = avg_wait - self.metrics.min_wait_to_shutoff
-                    else:
-                        engine_off = 0
-                    self.metrics.record_wait_event(vid, 'east', avg_wait, engine_off, t)
-        
-        # Track when gates close to calculate duration
-        if not self.last_west_closed and self.west.gate_closed:
-            self.west.gate_close_time = t
-        
-        if not self.last_east_closed and self.east.gate_closed:
-            self.east.gate_close_time = t
-        
-        # Update state for next iteration
-        self.last_west_closed = self.west.gate_closed
-        self.last_east_closed = self.east.gate_closed
+            except:
+                continue
     
     def _handle_rerouting(self, t):
         for vid in traci.vehicle.getIDList():
@@ -505,45 +539,81 @@ class SimulationController:
                 x, _ = traci.vehicle.getPosition(vid)
                 route = traci.vehicle.getRoute(vid)
                 
+                # Check if vehicle is approaching a crossing with warning active
                 crossing = None
-                if abs(x - self.west.actual_x) < self.decision_distance and self.west.warning_active:
-                    if any('v_w' in edge for edge in route):
-                        crossing = 'west'
-                elif abs(x - self.east.actual_x) < self.decision_distance and self.east.warning_active:
-                    if any('v_e' in edge for edge in route):
-                        crossing = 'east'
+                distance_to_crossing = float('inf')
+                
+                # Check west crossing
+                if self.west.warning_active:
+                    dist_to_west = abs(x - self.west.actual_x)
+                    if dist_to_west < self.decision_distance and dist_to_west > 50:  # Not too close
+                        if any('v_w' in edge for edge in route):
+                            crossing = 'west'
+                            distance_to_crossing = dist_to_west
+                
+                # Check east crossing
+                if self.east.warning_active:
+                    dist_to_east = abs(x - self.east.actual_x)
+                    if dist_to_east < self.decision_distance and dist_to_east > 50:  # Not too close
+                        if any('v_e' in edge for edge in route):
+                            # If already considering west, pick closer one
+                            if crossing is None or dist_to_east < distance_to_crossing:
+                                crossing = 'east'
+                                distance_to_crossing = dist_to_east
                 
                 if crossing:
-                    should_reroute, time_saved = self._evaluate_reroute(t, crossing, x)
+                    should_reroute, time_saved, wait_current, wait_other = self._evaluate_reroute(t, crossing, x)
                     self.reroute_decisions[vid] = True
                     
-                    if should_reroute:
-                        self._reroute_vehicle(vid, crossing, route)
-                        self.metrics.record_reroute(vid, crossing, time_saved, t)
-                        Logger.log(f"Vehicle {vid} rerouted from {crossing} (saves {time_saved:.1f}s)")
-            except:
+                    if should_reroute and time_saved > 0:
+                        success = self._reroute_vehicle(vid, crossing, route)
+                        if success:
+                            self.metrics.record_reroute(vid, crossing, time_saved, wait_current, wait_other, t)
+                            Logger.log(f"Vehicle {vid} rerouted from {crossing} to avoid {wait_current:.1f}s wait (saves {time_saved:.1f}s)")
+            except Exception as e:
                 continue
     
     def _reroute_vehicle(self, vid, from_crossing, current_route):
         try:
+            # Get current edge
+            current_edge = traci.vehicle.getRoadID(vid)
+            
+            # Build new route based on current position and destination
             if from_crossing == 'west':
-                if 'v_w_n_s' in current_route:
-                    new_route = ['n_w_e', 'v_e_n_s', 'v_e_x_s'] + [e for e in current_route if 's_' in e]
-                elif 'v_w_s_n' in current_route:
-                    new_route = ['s_w_e', 'v_e_s_n', 'v_e_x_n'] + [e for e in current_route if 'n_' in e]
+                if 'v_w_n_s' in current_route or 'v_w_x_s' in current_route:
+                    # Going south through west, reroute to east
+                    if 'n_w' in current_edge or current_edge == 'n_w_e':
+                        new_route = ['n_w_e', 'v_e_n_s', 'v_e_x_s'] + [e for e in current_route if 's_' in e and 'v_w' not in e]
+                    else:
+                        return False
+                elif 'v_w_s_n' in current_route or 'v_w_x_n' in current_route:
+                    # Going north through west, reroute to east
+                    if 's_w' in current_edge or current_edge == 's_w_e':
+                        new_route = ['s_w_e', 'v_e_s_n', 'v_e_x_n'] + [e for e in current_route if 'n_' in e and 'v_w' not in e]
+                    else:
+                        return False
                 else:
-                    return
-            else:
-                if 'v_e_n_s' in current_route:
-                    new_route = ['n_e_w', 'v_w_n_s', 'v_w_x_s'] + [e for e in current_route if 's_' in e]
-                elif 'v_e_s_n' in current_route:
-                    new_route = ['s_e_w', 'v_w_s_n', 'v_w_x_n'] + [e for e in current_route if 'n_' in e]
+                    return False
+            else:  # from east
+                if 'v_e_n_s' in current_route or 'v_e_x_s' in current_route:
+                    # Going south through east, reroute to west
+                    if 'n_e' in current_edge or current_edge == 'n_e_w':
+                        new_route = ['n_e_w', 'v_w_n_s', 'v_w_x_s'] + [e for e in current_route if 's_' in e and 'v_e' not in e]
+                    else:
+                        return False
+                elif 'v_e_s_n' in current_route or 'v_e_x_n' in current_route:
+                    # Going north through east, reroute to west
+                    if 's_e' in current_edge or current_edge == 's_e_w':
+                        new_route = ['s_e_w', 'v_w_s_n', 'v_w_x_n'] + [e for e in current_route if 'n_' in e and 'v_e' not in e]
+                    else:
+                        return False
                 else:
-                    return
+                    return False
             
             traci.vehicle.setRoute(vid, new_route)
-        except:
-            pass
+            return True
+        except Exception as e:
+            return False
     
     def _evaluate_reroute(self, t, current_crossing, x):
         if current_crossing == 'west':
@@ -555,12 +625,22 @@ class SimulationController:
             wait_other = self.west.get_wait_time(t)
             distance = abs(self.west.actual_x - x)
         
-        travel_time = distance / 15.0
-        time_saved = wait_here - (travel_time + wait_other)
+        # Average speed for detour calculation
+        avg_speed = 15.0  # m/s (slightly slower for turns)
+        travel_time = distance / avg_speed
         
-        return time_saved > self.reroute_threshold, time_saved
+        # Total time if rerouting
+        time_with_reroute = travel_time + wait_other
+        
+        # Time saved
+        time_saved = wait_here - time_with_reroute
+        
+        should_reroute = time_saved > self.reroute_threshold
+        
+        return should_reroute, time_saved, wait_here, wait_other
     
-    def _collect_metrics(self, t, dt):
+    def _collect_fuel_metrics(self, t, dt):
+        """Track fuel consumption for all vehicles"""
         for vid in traci.vehicle.getIDList():
             if 'train' in vid.lower():
                 continue
@@ -571,6 +651,11 @@ class SimulationController:
                 self.metrics.track_fuel(vid, t, dt, waiting)
             except:
                 continue
+    
+    def _finalize_results(self):
+        """Finalize and save all results"""
+        Logger.section("Finalizing results")
+        self.metrics.finalize_and_save()
 
 
 if __name__ == '__main__':

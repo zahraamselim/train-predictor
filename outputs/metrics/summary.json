@@ -1,11 +1,52 @@
 {
-  "vehicles_tracked": 500,
-  "wait_events": 0,
-  "reroute_events": 0,
+  "simulation": {
+    "vehicles_tracked": 500,
+    "wait_events": 261,
+    "reroute_events": 0
+  },
+  "wait_times": {
+    "total_events": 261,
+    "total_time_seconds": 6667.0000000000055,
+    "total_time_minutes": 111.11666666666676,
+    "mean_seconds": 25.544061302682,
+    "median_seconds": 27.599999999999994,
+    "max_seconds": 46.5,
+    "min_seconds": 1.0,
+    "std_dev_seconds": 12.383959977804935,
+    "p95_seconds": 43.30000000000001
+  },
+  "engine_management": {
+    "events_with_engine_off": 242,
+    "percentage_of_waits": 92.72030651340997,
+    "total_engine_off_time_seconds": 3781.7500000000014,
+    "total_engine_off_time_minutes": 63.02916666666669,
+    "average_engine_off_time_seconds": 15.627066115702483,
+    "median_engine_off_time_seconds": 16.345000000000013,
+    "total_fuel_saved_liters": 37.817500000000024,
+    "total_co2_saved_kg": 87.35842500000004
+  },
   "total_savings": {
-    "total_fuel_saved_liters": 0.0,
-    "total_co2_saved_kg": 0.0,
-    "fuel_saved_from_engine_off_liters": 0,
-    "fuel_saved_from_rerouting_liters": 0
+    "fuel_without_optimization_liters": 7739.399499999476,
+    "fuel_with_optimization_liters": 7701.581999999476,
+    "total_fuel_saved_liters": 37.817500000000024,
+    "total_co2_saved_kg": 87.35842500000004,
+    "fuel_saved_from_engine_off_liters": 37.817500000000024,
+    "fuel_saved_from_rerouting_liters": 0.0,
+    "co2_saved_from_engine_off_kg": 87.35842500000005,
+    "co2_saved_from_rerouting_kg": 0.0,
+    "co2_without_optimization_kg": 17878.01284499879,
+    "co2_with_optimization_kg": 17790.654419998787
+  },
+  "by_crossing": {
+    "west": {
+      "total_events": 142,
+      "total_wait_time_seconds": 3675.7,
+      "average_wait_seconds": 25.885211267605637
+    },
+    "east": {
+      "total_events": 119,
+      "total_wait_time_seconds": 2991.300000000001,
+      "average_wait_seconds": 25.136974789915975
+    }
   }
 }

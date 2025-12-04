@@ -1,437 +1,424 @@
 # Railroad Crossing Simulation
 
-A realistic simulation of railroad crossings with smart vehicle behavior.
+Simulates cars waiting at railroad crossings when trains pass through. Measures fuel savings from turning off engines and smart rerouting decisions.
 
-## What This Does
-
-Simulates a road network with two railroad crossings where:
-
-- Vehicles wait for trains
-- Vehicles turn off engines to save fuel
-- Vehicles can reroute to avoid long waits
-- Each crossing works independently with its own sensors and timing
-
-## The Setup
+## What It Does
 
 ```
         West Crossing          East Crossing
               |                      |
-═══════════════════════════════════════════ North Road
+══════════════════════════════════════════ North Road
               |                      |
              [X]                    [X]     Gates & Sensors
-------------- RAILWAY -------------------
+------------- TRAIN TRACKS ------------------
              [X]                    [X]     Gates & Sensors
               |                      |
-═══════════════════════════════════════════ South Road
+══════════════════════════════════════════ South Road
               |                      |
-
-        <------ 300m apart ------>
-        (roads 200m apart)
 ```
+
+- Cars drive on roads
+- Trains pass through crossings
+- Sensors detect trains early
+- Gates close before trains arrive
+- Vehicles wait (and save fuel by turning off engines)
+- Some vehicles reroute to avoid long waits
 
 ## How It Works
 
-### Railroad Crossings
-
-Each crossing has:
-
-1. **Three sensors** that detect trains at different distances
-2. **Gates** that close before trains arrive
-3. **Warning lights** that alert drivers early
-4. **Countdown timer** showing when gates will close/open
-
 ### Train Detection
 
-When a train passes the three sensors:
+Three sensors detect approaching trains:
 
 ```
 Sensor 1 (Far)  →  Sensor 2 (Mid)  →  Sensor 3 (Near)  →  Crossing
 ```
 
-The system:
+When a train passes all three sensors:
 
-1. Records when train passes each sensor
-2. Calculates train speed from sensor data
-3. Predicts when train will arrive (ETA)
-4. Closes gates before arrival
-5. Opens gates after train departs
+1. System calculates train speed
+2. Predicts when train will arrive (ETA)
+3. Closes gates 8 seconds before arrival
+4. Opens gates 5 seconds after train leaves
 
-### Smart Features
+### Engine Management
 
-**Engine Management (Automatic)**
+When vehicles wait at crossings:
 
-- System tracks how long vehicles wait in queue
-- After 5 seconds of waiting, assumes engine is turned off
-- Calculates fuel saved: `wait_time × 0.7 × (idling_rate - off_rate)`
-- The 0.7 factor accounts for realistic driver behavior (70% compliance)
-- Tracks total fuel and CO2 savings
+- First 5 seconds: engine idles (0.01 L/s)
+- After 5 seconds: engine turns off (0 L/s)
+- Reality factor: only 70% of drivers actually turn off
 
-**Smart Rerouting**
-
-- Warning light turns yellow when train is coming
-- Vehicles near the crossing can choose:
-  - Wait for train to pass
-  - Go to the other crossing (if faster)
-- System calculates which is faster
-- Tracks time saved from rerouting
-
-## Files
+**Fuel saved per vehicle:**
 
 ```
-simulation/
-├── config.yaml          Configuration (timing, speeds, etc)
-├── network.py           Generate road network
-├── controller.py        Run simulation and control crossings
-├── metrics.py           Track and save results
-└── README.md            This file
+if wait_time > 5 seconds:
+    engine_off_time = (wait_time - 5) × 0.7
+    fuel_saved = engine_off_time × 0.01 L/s
 ```
 
-## Configuration
+### Smart Rerouting
 
-Edit `config.yaml` to change:
+When a train approaches:
 
-```yaml
-network:
-  road_separation: 200 # Distance between north/south roads
-  crossing_distance: 300 # Distance between west/east crossings
-  road_length: 2000 # How long the roads are
-
-traffic:
-  cars_per_hour: 300 # Number of cars per hour
-  train_interval: 360 # Train every 6 minutes
-
-crossings:
-  west: # West crossing settings
-    sensors: [1200, 800, 400] # Sensor distances from crossing
-    close_before_arrival: 8.0 # Close gates 8s before train
-    open_after_departure: 5.0 # Open gates 5s after train leaves
-    warning_time: 25.0 # Warn drivers 25s before arrival
-
-  east: # East crossing (different timing!)
-    sensors: [1500, 900, 450]
-    close_before_arrival: 10.0
-    open_after_departure: 3.0
-    warning_time: 30.0
-
-fuel:
-  driving: 0.08 # Fuel when driving (liters/second)
-  idling: 0.01 # Fuel when idling (liters/second)
-  engine_off: 0.0 # Fuel when off (liters/second)
-  co2_per_liter: 2.31 # CO2 per liter of fuel
-  min_wait_to_shutoff: 5.0 # Assume engine off after 5s wait
-  engine_off_factor: 0.7 # 70% of wait time engines actually off
-
-rerouting:
-  min_time_saved: 8.0 # Only reroute if saves > 8 seconds
-  decision_point: 180 # Make decision 180m before crossing
-```
+1. Warning light turns yellow
+2. Nearby vehicles calculate fastest route
+3. If rerouting saves 8+ seconds, they switch crossings
+4. System tracks time and fuel saved
 
 ## Running the Simulation
 
-### Generate Network
+### Setup
 
 ```bash
-make sim-network
+# Generate road network
+python simulation/network.py
 ```
 
-### Run Simulation (Text Only)
+### Run Without Visuals (Faster)
 
 ```bash
-make sim-run
+python simulation/controller.py
 ```
 
-### Run with Visual Interface
+### Run With Visual Interface
 
 ```bash
-make sim-gui
+python simulation/controller.py --gui
 ```
 
-### Quick Test (5 minutes)
+### Quick Test (10 minutes)
 
-```bash
-make sim-quick
+Edit `config.yaml`:
+
+```yaml
+simulation:
+  duration: 600 # 10 minutes instead of 20
 ```
 
-## What You'll See
+## Understanding Results
 
-### In the GUI
+After running, check `outputs/results/simulation_report.txt`:
 
-**Colors:**
-
-- **Realistic vehicles**: Cars look like actual cars (not triangles!)
-- **Realistic trains**: Trains look like actual trains
-- **Green gates**: Open, safe to cross
-- **Red gates**: Closed, train coming/passing
-- **Orange sensors**: Waiting for train
-- **Red sensors**: Train detected
-- **Yellow warning lights**: Train approaching, decide now!
-- **Red warning lights**: Gates closed
-- **Buildings**: Gray/brown structures with roofs
-- **Trees**: Green foliage with brown trunks
-- **Green background**: Grass/landscape
-
-**Countdown Timer:**
-
-- Before gate closes: "Closing in X seconds"
-- While closed: "Opening in X seconds"
-
-### In the Console
+### Example Results
 
 ```
-[12:00:00] Starting simulation (3600s)
-[12:00:15] West: Train detected
-[12:00:17] West: ETA = 12.3s
-[12:00:25] West: Warning activated
-[12:00:27] West: GATE CLOSED
-[12:00:32] Vehicle car_45 engine OFF (wait=5.2s, remaining=7.1s)
-[12:00:35] Vehicle car_67 rerouted (saves 11.3s)
-[12:00:39] West: Train arrived
-[12:00:42] West: Train departed
-[12:00:47] West: GATE OPENED
-```
-
-## Understanding the Results
-
-After simulation, check `outputs/results/simulation_report.txt`:
-
-```
-SIMULATION RESULTS
-
-Vehicles tracked: 487
+SIMULATION OVERVIEW
+  Vehicles tracked: 500
+  Wait events: 261
+  Reroute events: 0
 
 WAIT TIMES
-  Total events: 234
-  Average: 12.5 seconds
-  Median: 11.8 seconds
-  Maximum: 28.3 seconds
-  95th percentile: 22.1 seconds
+  Average: 25.5 seconds
+  Median: 27.6 seconds
+  Maximum: 46.5 seconds
 
 ENGINE MANAGEMENT
-  Events: 156
-  Percentage: 66.7%
-  Total time engines off: 1,247 seconds
-  Fuel saved: 12.47 liters
-  CO2 saved: 28.81 kg
+  Events with engine shutoff: 242 (92.7%)
+  Total engine off time: 63.0 minutes
+  Fuel saved: 37.82 liters
+  CO₂ reduced: 87.36 kg
 
-REROUTING
-  Events: 34
-  Total time saved: 523 seconds
-  Average per reroute: 15.4 seconds
+ENVIRONMENTAL IMPACT
+  Equivalent to 0.8 car refuelings saved
+  Equivalent to 216 km of emissions avoided
+  Trees needed to offset: 4.2
 ```
 
-## Data Files
+### What This Means
 
-All in `outputs/metrics/`:
+**92.7% of vehicles turned off engines** - 242 out of 261 waiting vehicles waited longer than 5 seconds
 
-**wait_times.csv**: When vehicles waited
+**37.82 liters saved** - From vehicles turning off engines while waiting
 
-```csv
-vehicle,crossing,duration,time
-car_0,west,12.5,180.0
-car_5,east,8.2,195.0
-```
+**87.36 kg CO₂ reduced** - Environmental benefit (1 liter fuel = 2.31 kg CO₂)
 
-**engine_savings.csv**: Engine shutoff events
+**No rerouting** - Both crossings had similar wait times, so vehicles stayed put
 
-```csv
-vehicle,duration,fuel_saved,co2_saved,time
-car_0,8.0,0.08,0.185,188.0
-```
+## Configuration
 
-**reroutes.csv**: Rerouting decisions
+Edit `simulation/config.yaml` to change behavior:
 
-```csv
-vehicle,from,to,time_saved,time
-car_25,west,east,15.3,245.0
-```
-
-## How the Math Works
-
-### ETA Calculation
-
-When train passes 3 sensors:
-
-```
-Distance between sensors: d₁, d₂
-Time between sensors: t₁, t₂
-
-Recent speed: v = d₂ / t₂
-Distance to crossing: d
-ETA = d / v
-```
-
-### Rerouting Decision
-
-```
-Option 1 (Wait):
-  Time = wait_for_train
-
-Option 2 (Reroute):
-  Time = drive_to_other_crossing + wait_at_other_crossing
-
-If (Option 1 - Option 2) > 8 seconds:
-  Reroute!
-```
-
-### Fuel Savings
-
-```
-For each vehicle waiting:
-  if wait_time > 5 seconds:
-    effective_engine_off_time = (wait_time - 5) × 0.7
-    fuel_saved = effective_engine_off_time × (idling_rate - off_rate)
-    fuel_saved = effective_engine_off_time × 0.01 liters/second
-
-CO₂ saved = fuel_saved × 2.31 kg/liter
-```
-
-The 0.7 factor represents that 70% of drivers actually turn off engines, 30% keep idling.
-
-## Experiments to Try
-
-### 1. Different Crossing Timings
-
-Try making crossings very different:
-
-```yaml
-west:
-  close_before_arrival: 5.0 # Aggressive
-east:
-  close_before_arrival: 15.0 # Conservative
-```
-
-**Question**: Which gets fewer complaints? Which is safer?
-
-### 2. Traffic Density
+### Traffic Settings
 
 ```yaml
 traffic:
-  cars_per_hour: 500 # Heavy traffic
-```
-
-**Question**: How does this affect wait times? Rerouting?
-
-### 3. Train Frequency
-
-```yaml
-traffic:
+  cars_per_hour: 300 # More cars = more wait events
   train_interval: 180 # Train every 3 minutes
 ```
 
-**Question**: At what point does rerouting stop working?
+Try:
 
-### 4. Sensor Placement
+- Heavy traffic: `cars_per_hour: 600`
+- Frequent trains: `train_interval: 120` (every 2 minutes)
+
+### Gate Timing
 
 ```yaml
-sensors: [2000, 1000, 500] # Farther away
+crossings:
+  west:
+    close_before_arrival: 8.0 # Close gate 8s before train
+    open_after_departure: 5.0 # Open gate 5s after train
+    warning_time: 25.0 # Warn drivers 25s ahead
 ```
 
-**Question**: Does earlier detection improve wait times?
+Try:
 
-### 5. Engine Shutoff Factor
+- Aggressive: `close_before_arrival: 5.0` (shorter waits, less safe)
+- Conservative: `close_before_arrival: 12.0` (longer waits, safer)
+
+### Engine Shutoff
 
 ```yaml
 fuel:
-  engine_off_factor: 0.5 # Only 50% compliance
+  min_wait_to_shutoff: 5.0 # Turn off after 5s
+  engine_off_factor: 0.7 # 70% of drivers comply
 ```
 
-**Question**: How does driver compliance affect total savings?
+Try:
 
-## Real-World Connection
+- Earlier shutoff: `min_wait_to_shutoff: 3.0`
+- Higher compliance: `engine_off_factor: 0.9` (90%)
 
-This simulation models real engineering problems:
+### Rerouting
 
-**Questions Engineers Face:**
+```yaml
+rerouting:
+  min_time_saved: 8.0 # Only reroute if saves 8+ seconds
+  decision_point: 180 # Decide 180m before crossing
+```
 
-- How far should sensors be from crossings?
-- When should gates close? (Too early = long waits, too late = danger)
-- Should warning systems be integrated?
-- What's the optimal timing?
+Try:
 
-**What You're Learning:**
+- More rerouting: `min_time_saved: 5.0`
+- Earlier decision: `decision_point: 250`
 
-- System optimization
-- Trade-offs (safety vs. convenience)
-- Data collection and analysis
+## Output Files
+
+### outputs/metrics/
+
+**wait_events.csv** - Every vehicle wait:
+
+```csv
+vehicle,crossing,wait_duration,engine_off_duration,fuel_saved,co2_saved,time
+car_0,west,15.2,7.1,0.071,0.164,145.3
+```
+
+**reroute_events.csv** - Every reroute decision:
+
+```csv
+vehicle,from,to,time_saved,fuel_saved,co2_saved,time
+car_5,west,east,12.3,0.984,2.273,234.5
+```
+
+**vehicle_fuel.csv** - Per-vehicle consumption:
+
+```csv
+vehicle_id,total_fuel_liters,total_co2_kg,total_wait_time_seconds
+car_0,2.45,5.66,15.2
+```
+
+### outputs/results/
+
+**simulation_report.txt** - Human-readable summary
+
+### outputs/logs/
+
+**simulation_YYYYMMDD_HHMMSS.log** - Detailed event log
+
+## Visual Elements
+
+When running with `--gui`, you'll see:
+
+**Colors:**
+
+- Blue vehicles: cars
+- Red vehicles: trains
+- Green gates: open, safe to cross
+- Red gates: closed, train coming
+- Orange sensors: waiting for trains
+- Red sensors: train detected
+- Yellow warning lights: train approaching, decide now
+- Red warning lights: gates closed
+- Buildings with windows and roofs
+- Trees with brown trunks and green leaves
+
+**Countdown Timer:**
+
+- Shows seconds until gate closes/opens
+- Green numbers: gate will close soon
+- Red numbers: gate closed, train passing
+
+## Common Scenarios
+
+### Scenario 1: Normal Operation
+
+```
+[12:00:15] West: Train detected
+[12:00:17] West: ETA = 12.3s
+[12:00:25] West: Warning activated (train 12s away)
+[12:00:27] West: GATE CLOSED (train 10s away)
+[12:00:35] Vehicle car_45 waited 8.2s, engine off 2.3s
+[12:00:37] West: Train arrived
+[12:00:40] West: Train departed
+[12:00:45] West: GATE OPENED
+```
+
+### Scenario 2: Rerouting
+
+```
+[12:01:10] East: Warning activated
+[12:01:12] Vehicle car_89 rerouted from east to west (saves 15.3s)
+```
+
+### Scenario 3: Both Crossings Busy
+
+```
+[12:02:00] West: GATE CLOSED (train approaching)
+[12:02:05] East: GATE CLOSED (different train)
+[12:02:10] Traffic backing up at both crossings
+```
+
+## Experiments to Try
+
+### 1. Rush Hour
+
+**Change:**
+
+```yaml
+cars_per_hour: 600
+train_interval: 120
+```
+
+**Question:** How much more fuel is saved with heavy traffic?
+
+### 2. Different Crossing Timings
+
+**Change:**
+
+```yaml
+west:
+  close_before_arrival: 5.0
+east:
+  close_before_arrival: 12.0
+```
+
+**Question:** Do vehicles start preferring one crossing?
+
+### 3. Early Engine Shutoff
+
+**Change:**
+
+```yaml
+min_wait_to_shutoff: 2.0
+```
+
+**Question:** How much extra fuel is saved?
+
+### 4. High Compliance
+
+**Change:**
+
+```yaml
+engine_off_factor: 0.95
+```
+
+**Question:** What if almost everyone turns off their engine?
+
+### 5. Aggressive Rerouting
+
+**Change:**
+
+```yaml
+min_time_saved: 3.0
+decision_point: 300
+```
+
+**Question:** How often do vehicles reroute now?
+
+## Interpreting Statistics
+
+### Wait Time Statistics
+
+**Average vs Median:**
+
+- Average: 25.5s (sum of all waits / number of waits)
+- Median: 27.6s (middle value when sorted)
+- If median > average: Most waits are longer, with a few very short waits
+- If average > median: Most waits are shorter, with a few very long waits
+
+**Standard Deviation: 12.4s**
+
+- Shows how spread out the wait times are
+- 68% of waits are within 25.5 ± 12.4 seconds
+- 95% of waits are within 25.5 ± 24.8 seconds
+
+**95th Percentile: 43.3s**
+
+- 95% of vehicles wait less than 43.3 seconds
+- Only 5% experience longer waits
+- Useful for worst-case planning
+
+### Engine Shutoff Percentage
+
+**92.7% of waits had engine shutoff**
+
+- This means 92.7% of vehicles waited longer than 5 seconds
+- Of those vehicles, 70% actually turned off their engines
+- Effective shutoff rate: 92.7% × 70% = 64.9% of all vehicles
+
+### Per-Crossing Comparison
+
+**West: 142 events, 25.9s average**
+**East: 119 events, 25.1s average**
+
+- West crossing had more events (more traffic crosses there)
+- Wait times similar (system is balanced)
+- If one crossing had much longer waits, vehicles would reroute
+
+## File Structure
+
+```
+simulation/
+├── controller.py       Main simulation logic
+├── network.py         Generates road network
+├── metrics.py         Tracks and calculates results
+├── config.yaml        All settings
+└── README.md          This file
+```
+
+## What You're Learning
+
+**Traffic Engineering:**
+
+- How railroad crossings work
+- Optimal gate timing
+- Sensor placement
+
+**Environmental Science:**
+
+- Fuel consumption calculations
+- Emission reduction strategies
+- Real-world impact measurement
+
+**System Design:**
+
+- Safety vs efficiency tradeoffs
 - Real-time decision making
-- Environmental impact assessment
+- Performance optimization
 
-**Careers Using This:**
+**Data Analysis:**
 
-- Traffic Engineer
-- Transportation Planner
-- Safety Engineer
-- Software Developer
-- Data Analyst
-- Environmental Consultant
-
-## Tips for Success
-
-1. **Start with defaults**: Run once to see normal behavior
-2. **Change one thing**: Modify one parameter at a time
-3. **Compare results**: Run multiple times, compare reports
-4. **Think about trade-offs**: Faster isn't always better
-5. **Real data**: These numbers come from real systems!
-
-## Common Questions
-
-**Q: Why do crossings have different timing?**
-A: In reality, crossings are independent. Train speeds vary, sensor placements differ, and each crossing optimizes for its local conditions.
-
-**Q: Why turn off engines?**
-A: Modern cars have auto-start-stop systems that save fuel and emissions. This simulates that technology.
-
-**Q: Why is rerouting optional?**
-A: In real life, drivers make their own decisions. Warning lights inform them, but they choose whether to reroute.
-
-**Q: Why do some vehicles not reroute even when it's faster?**
-A: Some vehicles are past the decision point when the warning activates. Realistic behavior!
-
-**Q: Can trains slow down?**
-A: Trains can't easily slow down or stop. That's why cars must wait, not trains.
-
-## Troubleshooting
-
-**No vehicles appear:**
-
-- Run `make sim-network` first
-- Check that SUMO is installed
-
-**Gates never close:**
-
-- Check sensor distances in config
-- Ensure trains are spawning (`train_interval`)
-
-**No rerouting happens:**
-
-- Lower `min_time_saved` threshold
-- Increase train frequency
-
-**Simulation crashes:**
-
-- Delete `.xml` files and regenerate network
-- Check config syntax
-
-## Next Steps
-
-After understanding this simulation:
-
-1. Try the optimization module to find best timings
-2. Try the machine learning module to predict train arrivals
-3. Combine all three for a complete system
+- Statistical measures (mean, median, percentiles)
+- Data collection and reporting
+- Comparing different configurations
 
 ## Summary
 
-This simulation shows:
+The simulation shows:
 
-- How railroad crossings work
-- How smart systems can save time and fuel
-- How to balance safety, efficiency, and convenience
-- Real engineering trade-offs
-
-Perfect for learning about:
-
-- Traffic engineering
-- System optimization
-- Environmental impact
-- Data-driven decision making
+- Typical vehicle waits: 25-28 seconds
+- Most vehicles (92.7%) wait long enough to turn off engines
+- Engine shutoff saves 37.82 liters of fuel per simulation
+- This prevents 87.36 kg of CO₂ emissions
+- Smart systems can reduce environmental impact without reducing safety

@@ -1,19 +1,72 @@
-============================================================
-RAILROAD CROSSING SIMULATION RESULTS
-============================================================
+======================================================================
+RAILROAD CROSSING SIMULATION - RESULTS REPORT
+======================================================================
 
-Vehicles tracked: 500
+SIMULATION OVERVIEW
+----------------------------------------------------------------------
+  Vehicles tracked: 500
+  Wait events recorded: 261
+  Reroute events: 0
 
-============================================================
+======================================================================
+WAIT TIMES AT CROSSINGS
+======================================================================
+  Total wait events: 261
+  Total wait time: 6667.0 seconds (111.1 minutes)
+
+  Statistics:
+    Average wait: 25.5 seconds
+    Median wait: 27.6 seconds
+    Minimum wait: 1.0 seconds
+    Maximum wait: 46.5 seconds
+    Standard deviation: 12.4 seconds
+    95th percentile: 43.3 seconds
+
+----------------------------------------------------------------------
+BREAKDOWN BY CROSSING
+----------------------------------------------------------------------
+  West Crossing:
+    Events: 142
+    Total wait time: 3675.7 seconds
+    Average wait: 25.9 seconds
+
+  East Crossing:
+    Events: 119
+    Total wait time: 2991.3 seconds
+    Average wait: 25.1 seconds
+
+======================================================================
+ENGINE MANAGEMENT & FUEL SAVINGS
+======================================================================
+  Events with engine shutoff: 242
+  Percentage of waits: 92.7%
+
+  Engine Off Time:
+    Total: 3781.8 seconds (63.0 minutes)
+    Average per event: 15.6 seconds
+    Median per event: 16.3 seconds
+
+  Environmental Impact:
+    Fuel saved: 37.82 liters
+    CO₂ reduced: 87.36 kg
+
+======================================================================
 TOTAL ENVIRONMENTAL IMPACT
-============================================================
-  Total fuel saved: 0.00 liters
-    - From engine shutoff: 0.00 liters
-    - From smart rerouting: 0.00 liters
-  Total CO₂ emissions reduced: 0.00 kg
+======================================================================
+  Total fuel saved: 37.82 liters
+    - From engine shutoff: 37.82 liters (100.0%)
+    - From smart rerouting: 0.00 liters (0.0%)
 
+  Total CO₂ emissions reduced: 87.36 kg
+    - From engine shutoff: 87.36 kg
+    - From smart rerouting: 0.00 kg
+
+----------------------------------------------------------------------
   Environmental Context:
-    - Equivalent to 0.0 typical car refuelings saved
-    - Equivalent to 0 km of car driving emissions avoided
+    • Equivalent to 0.8 typical car refuelings saved
+    • Equivalent to 216 km of car driving emissions avoided
+    • Trees needed to offset CO₂: 4.2 (1 tree absorbs ~21kg CO₂/year)
 
-============================================================
+======================================================================
+END OF REPORT
+======================================================================
