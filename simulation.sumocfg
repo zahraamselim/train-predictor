@@ -6,9 +6,13 @@
     </input>
     <time>
         <begin value="0"/>
-        <end value="1200"/>
+        <end value="3600"/>
         <step-length value="0.1"/>
     </time>
+    <processing>
+        <ignore-route-errors value="true"/>
+        <time-to-teleport value="-1"/>
+    </processing>
     <gui_only>
         <gui-settings-file value="view.xml"/>
     </gui_only>

@@ -8,11 +8,11 @@
     <node id="rail_west" x="-2000" y="0" type="priority"/>
     <node id="rail_east" x="2000" y="0" type="priority"/>
     
-    <node id="nw_junction" x="-150.0" y="100.0" type="traffic_light"/>
-    <node id="sw_junction" x="-150.0" y="-100.0" type="traffic_light"/>
+    <node id="nw_junction" x="-150.0" y="100.0" type="priority"/>
+    <node id="sw_junction" x="-150.0" y="-100.0" type="priority"/>
     <node id="west_crossing" x="-150.0" y="0" type="rail_crossing"/>
     
-    <node id="ne_junction" x="150.0" y="100.0" type="traffic_light"/>
-    <node id="se_junction" x="150.0" y="-100.0" type="traffic_light"/>
+    <node id="ne_junction" x="150.0" y="100.0" type="priority"/>
+    <node id="se_junction" x="150.0" y="-100.0" type="priority"/>
     <node id="east_crossing" x="150.0" y="0" type="rail_crossing"/>
 </nodes>

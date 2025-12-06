@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-12-04 01:33:36 by Eclipse SUMO netconvert Version 1.12.0
+<!-- generated on 2025-12-06 02:25:01 by Eclipse SUMO netconvert Version 1.12.0
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
 
     <input>
         <node-files value="simulation.nod.xml"/>
         <edge-files value="simulation.edg.xml"/>
+        <connection-files value="simulation.con.xml"/>
     </input>
 
     <output>
@@ -31,366 +32,152 @@
         <lane id=":east_crossing_0_0" index="0" speed="13.89" length="6.20" shape="2148.40,101.50 2148.40,95.30"/>
     </edge>
     <edge id=":east_crossing_1" function="internal">
-        <lane id=":east_crossing_1_0" index="0" allow="rail" speed="6.08" length="7.76" shape="2148.40,101.50 2148.79,100.14 2149.98,99.18 2151.94,98.59 2154.70,98.40"/>
+        <lane id=":east_crossing_1_0" index="0" allow="rail" speed="5.04" length="5.00" shape="2148.40,101.50 2148.59,100.14 2149.18,99.18 2150.14,98.59 2151.50,98.40"/>
     </edge>
     <edge id=":east_crossing_2" function="internal">
-        <lane id=":east_crossing_2_0" index="0" allow="rail" speed="5.04" length="5.00" shape="2151.60,95.30 2151.79,96.66 2152.38,97.62 2153.34,98.21 2154.70,98.40"/>
+        <lane id=":east_crossing_2_0" index="0" allow="rail" speed="5.75" length="5.00" shape="2145.30,98.40 2146.66,98.21 2147.62,97.63 2148.21,96.66 2148.40,95.30"/>
     </edge>
     <edge id=":east_crossing_3" function="internal">
-        <lane id=":east_crossing_3_0" index="0" speed="13.89" length="6.20" shape="2151.60,95.30 2151.60,101.50"/>
-    </edge>
-    <edge id=":east_crossing_4" function="internal">
-        <lane id=":east_crossing_4_0" index="0" allow="rail" speed="5.75" length="5.00" shape="2145.30,98.40 2146.66,98.21 2147.62,97.63 2148.21,96.66 2148.40,95.30"/>
-    </edge>
-    <edge id=":east_crossing_5" function="internal">
-        <lane id=":east_crossing_5_0" index="0" allow="rail" speed="33.33" length="9.40" shape="2145.30,98.40 2154.70,98.40"/>
-    </edge>
-    <edge id=":east_crossing_6" function="internal">
-        <lane id=":east_crossing_6_0" index="0" allow="rail" speed="6.99" length="7.76" shape="2145.30,98.40 2148.06,98.59 2150.03,99.18 2151.21,100.14 2151.60,101.50"/>
+        <lane id=":east_crossing_3_0" index="0" allow="rail" speed="33.33" length="6.20" shape="2145.30,98.40 2151.50,98.40"/>
     </edge>
     <edge id=":ne_junction_0" function="internal">
-        <lane id=":ne_junction_0_0" index="0" speed="16.67" length="14.40" shape="2157.20,201.60 2142.80,201.60"/>
-    </edge>
-    <edge id=":ne_junction_1" function="internal">
-        <lane id=":ne_junction_1_0" index="0" speed="8.00" length="4.07" shape="2157.20,201.60 2153.35,201.05 2153.20,200.96"/>
-    </edge>
-    <edge id=":ne_junction_6" function="internal">
-        <lane id=":ne_junction_6_0" index="0" speed="8.00" length="10.13" shape="2153.20,200.96 2150.60,199.40 2148.95,196.65 2148.40,192.80"/>
-    </edge>
-    <edge id=":ne_junction_2" function="internal">
-        <lane id=":ne_junction_2_0" index="0" speed="6.51" length="9.03" shape="2151.60,192.80 2151.95,195.25 2153.00,197.00 2154.75,198.05 2157.20,198.40"/>
-    </edge>
-    <edge id=":ne_junction_3" function="internal">
-        <lane id=":ne_junction_3_0" index="0" speed="8.00" length="14.19" shape="2151.60,192.80 2151.05,196.65 2149.40,199.40 2146.65,201.05 2142.80,201.60"/>
-    </edge>
-    <edge id=":ne_junction_4" function="internal">
-        <lane id=":ne_junction_4_0" index="0" speed="6.51" length="9.03" shape="2142.80,198.40 2145.25,198.05 2147.00,197.00 2148.05,195.25 2148.40,192.80"/>
-    </edge>
-    <edge id=":ne_junction_5" function="internal">
-        <lane id=":ne_junction_5_0" index="0" speed="16.67" length="14.40" shape="2142.80,198.40 2157.20,198.40"/>
+        <lane id=":ne_junction_0_0" index="0" speed="6.51" length="9.03" shape="2142.80,198.40 2145.25,198.05 2147.00,197.00 2148.05,195.25 2148.40,192.80"/>
     </edge>
     <edge id=":nw_junction_0" function="internal">
-        <lane id=":nw_junction_0_0" index="0" speed="16.67" length="14.40" shape="1857.20,201.60 1842.80,201.60"/>
+        <lane id=":nw_junction_0_0" index="0" speed="6.51" length="9.03" shape="1842.80,198.40 1845.25,198.05 1847.00,197.00 1848.05,195.25 1848.40,192.80"/>
     </edge>
     <edge id=":nw_junction_1" function="internal">
-        <lane id=":nw_junction_1_0" index="0" speed="8.00" length="4.07" shape="1857.20,201.60 1853.35,201.05 1853.20,200.96"/>
-    </edge>
-    <edge id=":nw_junction_6" function="internal">
-        <lane id=":nw_junction_6_0" index="0" speed="8.00" length="10.13" shape="1853.20,200.96 1850.60,199.40 1848.95,196.65 1848.40,192.80"/>
-    </edge>
-    <edge id=":nw_junction_2" function="internal">
-        <lane id=":nw_junction_2_0" index="0" speed="6.51" length="9.03" shape="1851.60,192.80 1851.95,195.25 1853.00,197.00 1854.75,198.05 1857.20,198.40"/>
-    </edge>
-    <edge id=":nw_junction_3" function="internal">
-        <lane id=":nw_junction_3_0" index="0" speed="8.00" length="14.19" shape="1851.60,192.80 1851.05,196.65 1849.40,199.40 1846.65,201.05 1842.80,201.60"/>
-    </edge>
-    <edge id=":nw_junction_4" function="internal">
-        <lane id=":nw_junction_4_0" index="0" speed="6.51" length="9.03" shape="1842.80,198.40 1845.25,198.05 1847.00,197.00 1848.05,195.25 1848.40,192.80"/>
-    </edge>
-    <edge id=":nw_junction_5" function="internal">
-        <lane id=":nw_junction_5_0" index="0" speed="16.67" length="14.40" shape="1842.80,198.40 1857.20,198.40"/>
+        <lane id=":nw_junction_1_0" index="0" speed="16.67" length="11.20" shape="1842.80,198.40 1854.00,198.40"/>
     </edge>
     <edge id=":se_junction_0" function="internal">
-        <lane id=":se_junction_0_0" index="0" speed="6.51" length="9.03" shape="2148.40,7.20 2148.05,4.75 2147.00,3.00 2145.25,1.95 2142.80,1.60"/>
+        <lane id=":se_junction_0_0" index="0" speed="6.51" length="9.03" shape="2148.40,4.00 2148.75,1.55 2149.80,-0.20 2151.55,-1.25 2154.00,-1.60"/>
     </edge>
     <edge id=":se_junction_1" function="internal">
-        <lane id=":se_junction_1_0" index="0" speed="8.00" length="14.19" shape="2148.40,7.20 2148.95,3.35 2150.60,0.60 2153.35,-1.05 2157.20,-1.60"/>
-    </edge>
-    <edge id=":se_junction_2" function="internal">
-        <lane id=":se_junction_2_0" index="0" speed="6.51" length="9.03" shape="2157.20,1.60 2154.75,1.95 2153.00,3.00 2151.95,4.75 2151.60,7.20"/>
-    </edge>
-    <edge id=":se_junction_3" function="internal">
-        <lane id=":se_junction_3_0" index="0" speed="16.67" length="14.40" shape="2157.20,1.60 2142.80,1.60"/>
-    </edge>
-    <edge id=":se_junction_4" function="internal">
-        <lane id=":se_junction_4_0" index="0" speed="16.67" length="14.40" shape="2142.80,-1.60 2157.20,-1.60"/>
-    </edge>
-    <edge id=":se_junction_5" function="internal">
-        <lane id=":se_junction_5_0" index="0" speed="8.00" length="4.07" shape="2142.80,-1.60 2146.65,-1.05 2146.80,-0.96"/>
-    </edge>
-    <edge id=":se_junction_6" function="internal">
-        <lane id=":se_junction_6_0" index="0" speed="8.00" length="10.13" shape="2146.80,-0.96 2149.40,0.60 2151.05,3.35 2151.60,7.20"/>
+        <lane id=":se_junction_1_0" index="0" speed="16.67" length="11.20" shape="2142.80,-1.60 2154.00,-1.60"/>
     </edge>
     <edge id=":sw_junction_0" function="internal">
-        <lane id=":sw_junction_0_0" index="0" speed="6.51" length="9.03" shape="1848.40,7.20 1848.05,4.75 1847.00,3.00 1845.25,1.95 1842.80,1.60"/>
+        <lane id=":sw_junction_0_0" index="0" speed="6.51" length="9.03" shape="1848.40,4.00 1848.75,1.55 1849.80,-0.20 1851.55,-1.25 1854.00,-1.60"/>
     </edge>
     <edge id=":sw_junction_1" function="internal">
-        <lane id=":sw_junction_1_0" index="0" speed="8.00" length="14.19" shape="1848.40,7.20 1848.95,3.35 1850.60,0.60 1853.35,-1.05 1857.20,-1.60"/>
-    </edge>
-    <edge id=":sw_junction_2" function="internal">
-        <lane id=":sw_junction_2_0" index="0" speed="6.51" length="9.03" shape="1857.20,1.60 1854.75,1.95 1853.00,3.00 1851.95,4.75 1851.60,7.20"/>
-    </edge>
-    <edge id=":sw_junction_3" function="internal">
-        <lane id=":sw_junction_3_0" index="0" speed="16.67" length="14.40" shape="1857.20,1.60 1842.80,1.60"/>
-    </edge>
-    <edge id=":sw_junction_4" function="internal">
-        <lane id=":sw_junction_4_0" index="0" speed="16.67" length="14.40" shape="1842.80,-1.60 1857.20,-1.60"/>
-    </edge>
-    <edge id=":sw_junction_5" function="internal">
-        <lane id=":sw_junction_5_0" index="0" speed="8.00" length="4.07" shape="1842.80,-1.60 1846.65,-1.05 1846.80,-0.96"/>
-    </edge>
-    <edge id=":sw_junction_6" function="internal">
-        <lane id=":sw_junction_6_0" index="0" speed="8.00" length="10.13" shape="1846.80,-0.96 1849.40,0.60 1851.05,3.35 1851.60,7.20"/>
+        <lane id=":sw_junction_1_0" index="0" speed="16.67" length="11.20" shape="1842.80,-1.60 1854.00,-1.60"/>
     </edge>
     <edge id=":west_crossing_0" function="internal">
         <lane id=":west_crossing_0_0" index="0" speed="13.89" length="6.20" shape="1848.40,101.50 1848.40,95.30"/>
     </edge>
     <edge id=":west_crossing_1" function="internal">
-        <lane id=":west_crossing_1_0" index="0" allow="rail" speed="6.08" length="7.76" shape="1848.40,101.50 1848.79,100.14 1849.98,99.18 1851.94,98.59 1854.70,98.40"/>
+        <lane id=":west_crossing_1_0" index="0" allow="rail" speed="5.04" length="5.00" shape="1848.40,101.50 1848.59,100.14 1849.18,99.18 1850.14,98.59 1851.50,98.40"/>
     </edge>
     <edge id=":west_crossing_2" function="internal">
-        <lane id=":west_crossing_2_0" index="0" allow="rail" speed="5.04" length="5.00" shape="1851.60,95.30 1851.79,96.66 1852.37,97.62 1853.34,98.21 1854.70,98.40"/>
+        <lane id=":west_crossing_2_0" index="0" allow="rail" speed="5.75" length="5.00" shape="1845.30,98.40 1846.66,98.21 1847.62,97.63 1848.21,96.66 1848.40,95.30"/>
     </edge>
     <edge id=":west_crossing_3" function="internal">
-        <lane id=":west_crossing_3_0" index="0" speed="13.89" length="6.20" shape="1851.60,95.30 1851.60,101.50"/>
-    </edge>
-    <edge id=":west_crossing_4" function="internal">
-        <lane id=":west_crossing_4_0" index="0" allow="rail" speed="5.75" length="5.00" shape="1845.30,98.40 1846.66,98.21 1847.62,97.63 1848.21,96.66 1848.40,95.30"/>
-    </edge>
-    <edge id=":west_crossing_5" function="internal">
-        <lane id=":west_crossing_5_0" index="0" allow="rail" speed="33.33" length="9.40" shape="1845.30,98.40 1854.70,98.40"/>
-    </edge>
-    <edge id=":west_crossing_6" function="internal">
-        <lane id=":west_crossing_6_0" index="0" allow="rail" speed="6.99" length="7.76" shape="1845.30,98.40 1848.06,98.59 1850.03,99.18 1851.21,100.14 1851.60,101.50"/>
+        <lane id=":west_crossing_3_0" index="0" allow="rail" speed="33.33" length="6.20" shape="1845.30,98.40 1851.50,98.40"/>
     </edge>
 
-    <edge id="n_e_w" from="ne_junction" to="nw_junction" priority="-1">
-        <lane id="n_e_w_0" index="0" speed="16.67" length="285.60" shape="2142.80,201.60 1857.20,201.60"/>
-    </edge>
-    <edge id="n_in_e" from="n_east" to="ne_junction" priority="-1">
-        <lane id="n_in_e_0" index="0" speed="16.67" length="1842.80" shape="4000.00,201.60 2157.20,201.60"/>
-    </edge>
     <edge id="n_in_w" from="n_west" to="nw_junction" priority="-1">
         <lane id="n_in_w_0" index="0" speed="16.67" length="1842.80" shape="0.00,198.40 1842.80,198.40"/>
     </edge>
     <edge id="n_out_e" from="ne_junction" to="n_east" priority="-1">
-        <lane id="n_out_e_0" index="0" speed="16.67" length="1842.80" shape="2157.20,198.40 4000.00,198.40"/>
-    </edge>
-    <edge id="n_out_w" from="nw_junction" to="n_west" priority="-1">
-        <lane id="n_out_w_0" index="0" speed="16.67" length="1842.80" shape="1842.80,201.60 0.00,201.60"/>
+        <lane id="n_out_e_0" index="0" speed="16.67" length="1846.00" shape="2154.00,198.40 4000.00,198.40"/>
     </edge>
     <edge id="n_w_e" from="nw_junction" to="ne_junction" priority="-1">
-        <lane id="n_w_e_0" index="0" speed="16.67" length="285.60" shape="1857.20,198.40 2142.80,198.40"/>
+        <lane id="n_w_e_0" index="0" speed="16.67" length="288.80" shape="1854.00,198.40 2142.80,198.40"/>
     </edge>
     <edge id="rail_in" from="rail_west" to="west_crossing" priority="-1">
         <lane id="rail_in_0" index="0" allow="rail" speed="33.33" length="1845.30" shape="0.00,98.40 1845.30,98.40"/>
     </edge>
     <edge id="rail_mid" from="west_crossing" to="east_crossing" priority="-1">
-        <lane id="rail_mid_0" index="0" allow="rail" speed="33.33" length="290.60" shape="1854.70,98.40 2145.30,98.40"/>
+        <lane id="rail_mid_0" index="0" allow="rail" speed="33.33" length="293.80" shape="1851.50,98.40 2145.30,98.40"/>
     </edge>
     <edge id="rail_out" from="east_crossing" to="rail_east" priority="-1">
-        <lane id="rail_out_0" index="0" allow="rail" speed="33.33" length="1845.30" shape="2154.70,98.40 4000.00,98.40"/>
-    </edge>
-    <edge id="s_e_w" from="se_junction" to="sw_junction" priority="-1">
-        <lane id="s_e_w_0" index="0" speed="16.67" length="285.60" shape="2142.80,1.60 1857.20,1.60"/>
-    </edge>
-    <edge id="s_in_e" from="s_east" to="se_junction" priority="-1">
-        <lane id="s_in_e_0" index="0" speed="16.67" length="1842.80" shape="4000.00,1.60 2157.20,1.60"/>
+        <lane id="rail_out_0" index="0" allow="rail" speed="33.33" length="1848.50" shape="2151.50,98.40 4000.00,98.40"/>
     </edge>
     <edge id="s_in_w" from="s_west" to="sw_junction" priority="-1">
         <lane id="s_in_w_0" index="0" speed="16.67" length="1842.80" shape="0.00,-1.60 1842.80,-1.60"/>
     </edge>
     <edge id="s_out_e" from="se_junction" to="s_east" priority="-1">
-        <lane id="s_out_e_0" index="0" speed="16.67" length="1842.80" shape="2157.20,-1.60 4000.00,-1.60"/>
-    </edge>
-    <edge id="s_out_w" from="sw_junction" to="s_west" priority="-1">
-        <lane id="s_out_w_0" index="0" speed="16.67" length="1842.80" shape="1842.80,1.60 0.00,1.60"/>
+        <lane id="s_out_e_0" index="0" speed="16.67" length="1846.00" shape="2154.00,-1.60 4000.00,-1.60"/>
     </edge>
     <edge id="s_w_e" from="sw_junction" to="se_junction" priority="-1">
-        <lane id="s_w_e_0" index="0" speed="16.67" length="285.60" shape="1857.20,-1.60 2142.80,-1.60"/>
+        <lane id="s_w_e_0" index="0" speed="16.67" length="288.80" shape="1854.00,-1.60 2142.80,-1.60"/>
     </edge>
     <edge id="v_e_n_s" from="ne_junction" to="east_crossing" priority="-1">
         <lane id="v_e_n_s_0" index="0" speed="13.89" length="91.30" shape="2148.40,192.80 2148.40,101.50"/>
     </edge>
-    <edge id="v_e_s_n" from="se_junction" to="east_crossing" priority="-1">
-        <lane id="v_e_s_n_0" index="0" speed="13.89" length="88.10" shape="2151.60,7.20 2151.60,95.30"/>
-    </edge>
-    <edge id="v_e_x_n" from="east_crossing" to="ne_junction" priority="-1">
-        <lane id="v_e_x_n_0" index="0" speed="13.89" length="91.30" shape="2151.60,101.50 2151.60,192.80"/>
-    </edge>
     <edge id="v_e_x_s" from="east_crossing" to="se_junction" priority="-1">
-        <lane id="v_e_x_s_0" index="0" speed="13.89" length="88.10" shape="2148.40,95.30 2148.40,7.20"/>
+        <lane id="v_e_x_s_0" index="0" speed="13.89" length="91.30" shape="2148.40,95.30 2148.40,4.00"/>
     </edge>
     <edge id="v_w_n_s" from="nw_junction" to="west_crossing" priority="-1">
         <lane id="v_w_n_s_0" index="0" speed="13.89" length="91.30" shape="1848.40,192.80 1848.40,101.50"/>
     </edge>
-    <edge id="v_w_s_n" from="sw_junction" to="west_crossing" priority="-1">
-        <lane id="v_w_s_n_0" index="0" speed="13.89" length="88.10" shape="1851.60,7.20 1851.60,95.30"/>
-    </edge>
-    <edge id="v_w_x_n" from="west_crossing" to="nw_junction" priority="-1">
-        <lane id="v_w_x_n_0" index="0" speed="13.89" length="91.30" shape="1851.60,101.50 1851.60,192.80"/>
-    </edge>
     <edge id="v_w_x_s" from="west_crossing" to="sw_junction" priority="-1">
-        <lane id="v_w_x_s_0" index="0" speed="13.89" length="88.10" shape="1848.40,95.30 1848.40,7.20"/>
+        <lane id="v_w_x_s_0" index="0" speed="13.89" length="91.30" shape="1848.40,95.30 1848.40,4.00"/>
     </edge>
 
-    <tlLogic id="ne_junction" type="static" programID="0" offset="0">
-        <phase duration="41" state="GgrrGG"/>
-        <phase duration="4"  state="yyrryy"/>
-        <phase duration="41" state="rrGGGr"/>
-        <phase duration="4"  state="rryyyr"/>
-    </tlLogic>
-    <tlLogic id="nw_junction" type="static" programID="0" offset="0">
-        <phase duration="41" state="GgrrGG"/>
-        <phase duration="4"  state="yyrryy"/>
-        <phase duration="41" state="rrGGGr"/>
-        <phase duration="4"  state="rryyyr"/>
-    </tlLogic>
-    <tlLogic id="se_junction" type="static" programID="0" offset="0">
-        <phase duration="41" state="rrGGGg"/>
-        <phase duration="4"  state="rryyyy"/>
-        <phase duration="41" state="GGGrrr"/>
-        <phase duration="4"  state="yyyrrr"/>
-    </tlLogic>
-    <tlLogic id="sw_junction" type="static" programID="0" offset="0">
-        <phase duration="41" state="rrGGGg"/>
-        <phase duration="4"  state="rryyyy"/>
-        <phase duration="41" state="GGGrrr"/>
-        <phase duration="4"  state="yyyrrr"/>
-    </tlLogic>
-
-    <junction id="east_crossing" type="rail_crossing" x="2150.00" y="100.00" incLanes="v_e_n_s_0 v_e_s_n_0 rail_mid_0" intLanes=":east_crossing_0_0 :east_crossing_1_0 :east_crossing_2_0 :east_crossing_3_0 :east_crossing_4_0 :east_crossing_5_0 :east_crossing_6_0" shape="2146.80,101.50 2153.20,101.50 2153.37,100.67 2153.57,100.38 2153.87,100.17 2154.24,100.04 2154.70,100.00 2154.70,96.80 2153.87,96.63 2153.57,96.43 2153.37,96.13 2153.24,95.76 2153.20,95.30 2146.80,95.30 2146.63,96.13 2146.43,96.43 2146.13,96.63 2145.76,96.76 2145.30,96.80 2145.30,100.00 2146.13,100.17 2146.43,100.38 2146.63,100.67 2146.76,101.04">
-        <request index="0" response="1110000" foes="1110000" cont="0"/>
-        <request index="1" response="1101100" foes="1101100" cont="0"/>
-        <request index="2" response="0100000" foes="0100010" cont="0"/>
-        <request index="3" response="1100000" foes="1100010" cont="0"/>
-        <request index="4" response="0000000" foes="0000001" cont="0"/>
-        <request index="5" response="0000000" foes="0001111" cont="0"/>
-        <request index="6" response="0000000" foes="0001011" cont="0"/>
+    <junction id="east_crossing" type="rail_crossing" x="2150.00" y="100.00" incLanes="v_e_n_s_0 rail_mid_0" intLanes=":east_crossing_0_0 :east_crossing_1_0 :east_crossing_2_0 :east_crossing_3_0" shape="2146.80,101.50 2150.00,101.50 2150.17,100.67 2150.38,100.38 2150.67,100.17 2151.04,100.04 2151.50,100.00 2151.50,96.80 2150.67,96.63 2150.38,96.43 2150.17,96.13 2150.04,95.76 2150.00,95.30 2146.80,95.30 2146.63,96.13 2146.43,96.43 2146.13,96.63 2145.76,96.76 2145.30,96.80 2145.30,100.00 2146.13,100.17 2146.43,100.38 2146.63,100.67 2146.76,101.04">
+        <request index="0" response="1100" foes="1100" cont="0"/>
+        <request index="1" response="1000" foes="1000" cont="0"/>
+        <request index="2" response="0000" foes="0001" cont="0"/>
+        <request index="3" response="0000" foes="0011" cont="0"/>
     </junction>
-    <junction id="n_east" type="dead_end" x="4000.00" y="200.00" incLanes="n_out_e_0" intLanes="" shape="4000.00,200.00 4000.00,196.80 4000.00,200.00"/>
-    <junction id="n_west" type="dead_end" x="0.00" y="200.00" incLanes="n_out_w_0" intLanes="" shape="0.00,200.00 0.00,203.20 0.00,200.00"/>
-    <junction id="ne_junction" type="traffic_light" x="2150.00" y="200.00" incLanes="n_in_e_0 v_e_x_n_0 n_w_e_0" intLanes=":ne_junction_0_0 :ne_junction_6_0 :ne_junction_2_0 :ne_junction_3_0 :ne_junction_4_0 :ne_junction_5_0" shape="2157.20,203.20 2157.20,196.80 2154.98,196.36 2154.20,195.80 2153.64,195.02 2153.31,194.02 2153.20,192.80 2146.80,192.80 2146.36,195.02 2145.80,195.80 2145.02,196.36 2144.02,196.69 2142.80,196.80 2142.80,203.20">
-        <request index="0" response="000000" foes="001000" cont="0"/>
-        <request index="1" response="110000" foes="111000" cont="1"/>
-        <request index="2" response="100000" foes="100000" cont="0"/>
-        <request index="3" response="100011" foes="100011" cont="0"/>
-        <request index="4" response="000000" foes="000010" cont="0"/>
-        <request index="5" response="000000" foes="001110" cont="0"/>
+    <junction id="n_east" type="dead_end" x="4000.00" y="200.00" incLanes="n_out_e_0" intLanes="" shape="4000.00,196.80 4000.00,200.00"/>
+    <junction id="n_west" type="dead_end" x="0.00" y="200.00" incLanes="" intLanes="" shape="0.00,200.00 0.00,196.80"/>
+    <junction id="ne_junction" type="priority" x="2150.00" y="200.00" incLanes="n_w_e_0" intLanes=":ne_junction_0_0" shape="2154.00,200.00 2154.00,196.80 2151.78,196.36 2151.00,195.80 2150.44,195.02 2150.11,194.02 2150.00,192.80 2146.80,192.80 2146.36,195.02 2145.80,195.80 2145.02,196.36 2144.02,196.69 2142.80,196.80 2142.80,200.00">
+        <request index="0" response="0" foes="0" cont="0"/>
     </junction>
-    <junction id="nw_junction" type="traffic_light" x="1850.00" y="200.00" incLanes="n_e_w_0 v_w_x_n_0 n_in_w_0" intLanes=":nw_junction_0_0 :nw_junction_6_0 :nw_junction_2_0 :nw_junction_3_0 :nw_junction_4_0 :nw_junction_5_0" shape="1857.20,203.20 1857.20,196.80 1854.98,196.36 1854.20,195.80 1853.64,195.02 1853.31,194.02 1853.20,192.80 1846.80,192.80 1846.36,195.02 1845.80,195.80 1845.02,196.36 1844.02,196.69 1842.80,196.80 1842.80,203.20">
-        <request index="0" response="000000" foes="001000" cont="0"/>
-        <request index="1" response="110000" foes="111000" cont="1"/>
-        <request index="2" response="100000" foes="100000" cont="0"/>
-        <request index="3" response="100011" foes="100011" cont="0"/>
-        <request index="4" response="000000" foes="000010" cont="0"/>
-        <request index="5" response="000000" foes="001110" cont="0"/>
+    <junction id="nw_junction" type="priority" x="1850.00" y="200.00" incLanes="n_in_w_0" intLanes=":nw_junction_0_0 :nw_junction_1_0" shape="1854.00,200.00 1854.00,196.80 1851.78,196.36 1851.00,195.80 1850.44,195.02 1850.11,194.02 1850.00,192.80 1846.80,192.80 1846.36,195.02 1845.80,195.80 1845.02,196.36 1844.02,196.69 1842.80,196.80 1842.80,200.00">
+        <request index="0" response="00" foes="00" cont="0"/>
+        <request index="1" response="00" foes="00" cont="0"/>
     </junction>
     <junction id="rail_east" type="dead_end" x="4000.00" y="100.00" incLanes="rail_out_0" intLanes="" shape="4000.00,96.80 4000.00,100.00"/>
     <junction id="rail_west" type="dead_end" x="0.00" y="100.00" incLanes="" intLanes="" shape="0.00,100.00 0.00,96.80"/>
-    <junction id="s_east" type="dead_end" x="4000.00" y="0.00" incLanes="s_out_e_0" intLanes="" shape="4000.00,0.00 4000.00,-3.20 4000.00,0.00"/>
-    <junction id="s_west" type="dead_end" x="0.00" y="0.00" incLanes="s_out_w_0" intLanes="" shape="0.00,0.00 0.00,3.20 0.00,0.00"/>
-    <junction id="se_junction" type="traffic_light" x="2150.00" y="0.00" incLanes="v_e_x_s_0 s_in_e_0 s_w_e_0" intLanes=":se_junction_0_0 :se_junction_1_0 :se_junction_2_0 :se_junction_3_0 :se_junction_4_0 :se_junction_6_0" shape="2146.80,7.20 2153.20,7.20 2153.64,4.98 2154.20,4.20 2154.98,3.64 2155.98,3.31 2157.20,3.20 2157.20,-3.20 2142.80,-3.20 2142.80,3.20 2145.02,3.64 2145.80,4.20 2146.36,4.98 2146.69,5.98">
-        <request index="0" response="001000" foes="001000" cont="0"/>
-        <request index="1" response="111000" foes="111000" cont="0"/>
-        <request index="2" response="000000" foes="100000" cont="0"/>
-        <request index="3" response="000000" foes="100011" cont="0"/>
-        <request index="4" response="000000" foes="000010" cont="0"/>
-        <request index="5" response="001100" foes="001110" cont="1"/>
+    <junction id="s_east" type="dead_end" x="4000.00" y="0.00" incLanes="s_out_e_0" intLanes="" shape="4000.00,-3.20 4000.00,0.00"/>
+    <junction id="s_west" type="dead_end" x="0.00" y="0.00" incLanes="" intLanes="" shape="0.00,0.00 0.00,-3.20"/>
+    <junction id="se_junction" type="priority" x="2150.00" y="0.00" incLanes="v_e_x_s_0 s_w_e_0" intLanes=":se_junction_0_0 :se_junction_1_0" shape="2146.80,4.00 2150.00,4.00 2150.44,1.78 2151.00,1.00 2151.78,0.44 2152.78,0.11 2154.00,0.00 2154.00,-3.20 2142.80,-3.20 2142.80,0.00 2145.02,0.44 2145.80,1.00 2146.36,1.78 2146.69,2.78">
+        <request index="0" response="10" foes="10" cont="0"/>
+        <request index="1" response="00" foes="01" cont="0"/>
     </junction>
-    <junction id="sw_junction" type="traffic_light" x="1850.00" y="0.00" incLanes="v_w_x_s_0 s_e_w_0 s_in_w_0" intLanes=":sw_junction_0_0 :sw_junction_1_0 :sw_junction_2_0 :sw_junction_3_0 :sw_junction_4_0 :sw_junction_6_0" shape="1846.80,7.20 1853.20,7.20 1853.64,4.98 1854.20,4.20 1854.98,3.64 1855.98,3.31 1857.20,3.20 1857.20,-3.20 1842.80,-3.20 1842.80,3.20 1845.02,3.64 1845.80,4.20 1846.36,4.98 1846.69,5.98">
-        <request index="0" response="001000" foes="001000" cont="0"/>
-        <request index="1" response="111000" foes="111000" cont="0"/>
-        <request index="2" response="000000" foes="100000" cont="0"/>
-        <request index="3" response="000000" foes="100011" cont="0"/>
-        <request index="4" response="000000" foes="000010" cont="0"/>
-        <request index="5" response="001100" foes="001110" cont="1"/>
+    <junction id="sw_junction" type="priority" x="1850.00" y="0.00" incLanes="v_w_x_s_0 s_in_w_0" intLanes=":sw_junction_0_0 :sw_junction_1_0" shape="1846.80,4.00 1850.00,4.00 1850.44,1.78 1851.00,1.00 1851.78,0.44 1852.78,0.11 1854.00,0.00 1854.00,-3.20 1842.80,-3.20 1842.80,0.00 1845.02,0.44 1845.80,1.00 1846.36,1.78 1846.69,2.78">
+        <request index="0" response="10" foes="10" cont="0"/>
+        <request index="1" response="00" foes="01" cont="0"/>
     </junction>
-    <junction id="west_crossing" type="rail_crossing" x="1850.00" y="100.00" incLanes="v_w_n_s_0 v_w_s_n_0 rail_in_0" intLanes=":west_crossing_0_0 :west_crossing_1_0 :west_crossing_2_0 :west_crossing_3_0 :west_crossing_4_0 :west_crossing_5_0 :west_crossing_6_0" shape="1846.80,101.50 1853.20,101.50 1853.37,100.67 1853.57,100.38 1853.87,100.17 1854.24,100.04 1854.70,100.00 1854.70,96.80 1853.87,96.63 1853.57,96.43 1853.37,96.13 1853.24,95.76 1853.20,95.30 1846.80,95.30 1846.63,96.13 1846.43,96.43 1846.13,96.63 1845.76,96.76 1845.30,96.80 1845.30,100.00 1846.13,100.17 1846.43,100.38 1846.63,100.67 1846.76,101.04">
-        <request index="0" response="1110000" foes="1110000" cont="0"/>
-        <request index="1" response="1101100" foes="1101100" cont="0"/>
-        <request index="2" response="0100000" foes="0100010" cont="0"/>
-        <request index="3" response="1100000" foes="1100010" cont="0"/>
-        <request index="4" response="0000000" foes="0000001" cont="0"/>
-        <request index="5" response="0000000" foes="0001111" cont="0"/>
-        <request index="6" response="0000000" foes="0001011" cont="0"/>
+    <junction id="west_crossing" type="rail_crossing" x="1850.00" y="100.00" incLanes="v_w_n_s_0 rail_in_0" intLanes=":west_crossing_0_0 :west_crossing_1_0 :west_crossing_2_0 :west_crossing_3_0" shape="1846.80,101.50 1850.00,101.50 1850.17,100.67 1850.38,100.38 1850.67,100.17 1851.04,100.04 1851.50,100.00 1851.50,96.80 1850.67,96.63 1850.38,96.43 1850.17,96.13 1850.04,95.76 1850.00,95.30 1846.80,95.30 1846.63,96.13 1846.43,96.43 1846.13,96.63 1845.76,96.76 1845.30,96.80 1845.30,100.00 1846.13,100.17 1846.43,100.38 1846.63,100.67 1846.76,101.04">
+        <request index="0" response="1100" foes="1100" cont="0"/>
+        <request index="1" response="1000" foes="1000" cont="0"/>
+        <request index="2" response="0000" foes="0001" cont="0"/>
+        <request index="3" response="0000" foes="0011" cont="0"/>
     </junction>
 
-    <junction id=":ne_junction_6_0" type="internal" x="2153.20" y="200.96" incLanes=":ne_junction_1_0 n_w_e_0" intLanes=":ne_junction_3_0 :ne_junction_4_0 :ne_junction_5_0"/>
-    <junction id=":nw_junction_6_0" type="internal" x="1853.20" y="200.96" incLanes=":nw_junction_1_0 n_in_w_0" intLanes=":nw_junction_3_0 :nw_junction_4_0 :nw_junction_5_0"/>
-    <junction id=":se_junction_6_0" type="internal" x="2146.80" y="-0.96" incLanes=":se_junction_5_0 s_in_e_0" intLanes=":se_junction_1_0 :se_junction_2_0 :se_junction_3_0"/>
-    <junction id=":sw_junction_6_0" type="internal" x="1846.80" y="-0.96" incLanes=":sw_junction_5_0 s_e_w_0" intLanes=":sw_junction_1_0 :sw_junction_2_0 :sw_junction_3_0"/>
-
-    <connection from="n_e_w" to="n_out_w" fromLane="0" toLane="0" via=":nw_junction_0_0" tl="nw_junction" linkIndex="0" dir="s" state="O"/>
-    <connection from="n_e_w" to="v_w_n_s" fromLane="0" toLane="0" via=":nw_junction_1_0" tl="nw_junction" linkIndex="1" dir="l" state="o"/>
-    <connection from="n_in_e" to="n_e_w" fromLane="0" toLane="0" via=":ne_junction_0_0" tl="ne_junction" linkIndex="0" dir="s" state="O"/>
-    <connection from="n_in_e" to="v_e_n_s" fromLane="0" toLane="0" via=":ne_junction_1_0" tl="ne_junction" linkIndex="1" dir="l" state="o"/>
-    <connection from="n_in_w" to="v_w_n_s" fromLane="0" toLane="0" via=":nw_junction_4_0" tl="nw_junction" linkIndex="4" dir="r" state="O"/>
-    <connection from="n_in_w" to="n_w_e" fromLane="0" toLane="0" via=":nw_junction_5_0" tl="nw_junction" linkIndex="5" dir="s" state="O"/>
-    <connection from="n_w_e" to="v_e_n_s" fromLane="0" toLane="0" via=":ne_junction_4_0" tl="ne_junction" linkIndex="4" dir="r" state="O"/>
-    <connection from="n_w_e" to="n_out_e" fromLane="0" toLane="0" via=":ne_junction_5_0" tl="ne_junction" linkIndex="5" dir="s" state="O"/>
-    <connection from="rail_in" to="v_w_x_s" fromLane="0" toLane="0" via=":west_crossing_4_0" tl="west_crossing" linkIndex="-1" dir="r" state="M"/>
-    <connection from="rail_in" to="rail_mid" fromLane="0" toLane="0" via=":west_crossing_5_0" tl="west_crossing" linkIndex="-1" dir="s" state="M"/>
-    <connection from="rail_in" to="v_w_x_n" fromLane="0" toLane="0" via=":west_crossing_6_0" tl="west_crossing" linkIndex="-1" dir="l" state="M"/>
-    <connection from="rail_mid" to="v_e_x_s" fromLane="0" toLane="0" via=":east_crossing_4_0" tl="east_crossing" linkIndex="-1" dir="r" state="M"/>
-    <connection from="rail_mid" to="rail_out" fromLane="0" toLane="0" via=":east_crossing_5_0" tl="east_crossing" linkIndex="-1" dir="s" state="M"/>
-    <connection from="rail_mid" to="v_e_x_n" fromLane="0" toLane="0" via=":east_crossing_6_0" tl="east_crossing" linkIndex="-1" dir="l" state="M"/>
-    <connection from="s_e_w" to="v_w_s_n" fromLane="0" toLane="0" via=":sw_junction_2_0" tl="sw_junction" linkIndex="2" dir="r" state="O"/>
-    <connection from="s_e_w" to="s_out_w" fromLane="0" toLane="0" via=":sw_junction_3_0" tl="sw_junction" linkIndex="3" dir="s" state="O"/>
-    <connection from="s_in_e" to="v_e_s_n" fromLane="0" toLane="0" via=":se_junction_2_0" tl="se_junction" linkIndex="2" dir="r" state="O"/>
-    <connection from="s_in_e" to="s_e_w" fromLane="0" toLane="0" via=":se_junction_3_0" tl="se_junction" linkIndex="3" dir="s" state="O"/>
-    <connection from="s_in_w" to="s_w_e" fromLane="0" toLane="0" via=":sw_junction_4_0" tl="sw_junction" linkIndex="4" dir="s" state="O"/>
-    <connection from="s_in_w" to="v_w_s_n" fromLane="0" toLane="0" via=":sw_junction_5_0" tl="sw_junction" linkIndex="5" dir="l" state="o"/>
-    <connection from="s_w_e" to="s_out_e" fromLane="0" toLane="0" via=":se_junction_4_0" tl="se_junction" linkIndex="4" dir="s" state="O"/>
-    <connection from="s_w_e" to="v_e_s_n" fromLane="0" toLane="0" via=":se_junction_5_0" tl="se_junction" linkIndex="5" dir="l" state="o"/>
+    <connection from="n_in_w" to="v_w_n_s" fromLane="0" toLane="0" via=":nw_junction_0_0" dir="r" state="M"/>
+    <connection from="n_in_w" to="n_w_e" fromLane="0" toLane="0" via=":nw_junction_1_0" dir="s" state="M"/>
+    <connection from="n_w_e" to="v_e_n_s" fromLane="0" toLane="0" via=":ne_junction_0_0" dir="r" state="M"/>
+    <connection from="rail_in" to="v_w_x_s" fromLane="0" toLane="0" via=":west_crossing_2_0" tl="west_crossing" linkIndex="-1" dir="r" state="M"/>
+    <connection from="rail_in" to="rail_mid" fromLane="0" toLane="0" via=":west_crossing_3_0" tl="west_crossing" linkIndex="-1" dir="s" state="M"/>
+    <connection from="rail_mid" to="v_e_x_s" fromLane="0" toLane="0" via=":east_crossing_2_0" tl="east_crossing" linkIndex="-1" dir="r" state="M"/>
+    <connection from="rail_mid" to="rail_out" fromLane="0" toLane="0" via=":east_crossing_3_0" tl="east_crossing" linkIndex="-1" dir="s" state="M"/>
+    <connection from="s_in_w" to="s_w_e" fromLane="0" toLane="0" via=":sw_junction_1_0" dir="s" state="M"/>
+    <connection from="s_w_e" to="s_out_e" fromLane="0" toLane="0" via=":se_junction_1_0" dir="s" state="M"/>
     <connection from="v_e_n_s" to="v_e_x_s" fromLane="0" toLane="0" via=":east_crossing_0_0" tl="east_crossing" linkIndex="0" dir="s" state="o"/>
     <connection from="v_e_n_s" to="rail_out" fromLane="0" toLane="0" via=":east_crossing_1_0" tl="east_crossing" linkIndex="1" dir="l" state="o"/>
-    <connection from="v_e_s_n" to="rail_out" fromLane="0" toLane="0" via=":east_crossing_2_0" tl="east_crossing" linkIndex="2" dir="r" state="o"/>
-    <connection from="v_e_s_n" to="v_e_x_n" fromLane="0" toLane="0" via=":east_crossing_3_0" tl="east_crossing" linkIndex="3" dir="s" state="o"/>
-    <connection from="v_e_x_n" to="n_out_e" fromLane="0" toLane="0" via=":ne_junction_2_0" tl="ne_junction" linkIndex="2" dir="r" state="o"/>
-    <connection from="v_e_x_n" to="n_e_w" fromLane="0" toLane="0" via=":ne_junction_3_0" tl="ne_junction" linkIndex="3" dir="l" state="o"/>
-    <connection from="v_e_x_s" to="s_e_w" fromLane="0" toLane="0" via=":se_junction_0_0" tl="se_junction" linkIndex="0" dir="r" state="o"/>
-    <connection from="v_e_x_s" to="s_out_e" fromLane="0" toLane="0" via=":se_junction_1_0" tl="se_junction" linkIndex="1" dir="l" state="o"/>
+    <connection from="v_e_x_s" to="s_out_e" fromLane="0" toLane="0" via=":se_junction_0_0" dir="l" state="m"/>
     <connection from="v_w_n_s" to="v_w_x_s" fromLane="0" toLane="0" via=":west_crossing_0_0" tl="west_crossing" linkIndex="0" dir="s" state="o"/>
     <connection from="v_w_n_s" to="rail_mid" fromLane="0" toLane="0" via=":west_crossing_1_0" tl="west_crossing" linkIndex="1" dir="l" state="o"/>
-    <connection from="v_w_s_n" to="rail_mid" fromLane="0" toLane="0" via=":west_crossing_2_0" tl="west_crossing" linkIndex="2" dir="r" state="o"/>
-    <connection from="v_w_s_n" to="v_w_x_n" fromLane="0" toLane="0" via=":west_crossing_3_0" tl="west_crossing" linkIndex="3" dir="s" state="o"/>
-    <connection from="v_w_x_n" to="n_w_e" fromLane="0" toLane="0" via=":nw_junction_2_0" tl="nw_junction" linkIndex="2" dir="r" state="o"/>
-    <connection from="v_w_x_n" to="n_out_w" fromLane="0" toLane="0" via=":nw_junction_3_0" tl="nw_junction" linkIndex="3" dir="l" state="o"/>
-    <connection from="v_w_x_s" to="s_out_w" fromLane="0" toLane="0" via=":sw_junction_0_0" tl="sw_junction" linkIndex="0" dir="r" state="o"/>
-    <connection from="v_w_x_s" to="s_w_e" fromLane="0" toLane="0" via=":sw_junction_1_0" tl="sw_junction" linkIndex="1" dir="l" state="o"/>
+    <connection from="v_w_x_s" to="s_w_e" fromLane="0" toLane="0" via=":sw_junction_0_0" dir="l" state="m"/>
 
     <connection from=":east_crossing_0" to="v_e_x_s" fromLane="0" toLane="0" dir="s" state="M"/>
     <connection from=":east_crossing_1" to="rail_out" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":east_crossing_2" to="rail_out" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":east_crossing_3" to="v_e_x_n" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":east_crossing_4" to="v_e_x_s" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":east_crossing_5" to="rail_out" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":east_crossing_6" to="v_e_x_n" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":ne_junction_0" to="n_e_w" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":ne_junction_1" to="v_e_n_s" fromLane="0" toLane="0" via=":ne_junction_6_0" dir="l" state="m"/>
-    <connection from=":ne_junction_6" to="v_e_n_s" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":ne_junction_2" to="n_out_e" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":ne_junction_3" to="n_e_w" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":ne_junction_4" to="v_e_n_s" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":ne_junction_5" to="n_out_e" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":nw_junction_0" to="n_out_w" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":nw_junction_1" to="v_w_n_s" fromLane="0" toLane="0" via=":nw_junction_6_0" dir="l" state="m"/>
-    <connection from=":nw_junction_6" to="v_w_n_s" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":nw_junction_2" to="n_w_e" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":nw_junction_3" to="n_out_w" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":nw_junction_4" to="v_w_n_s" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":nw_junction_5" to="n_w_e" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":se_junction_0" to="s_e_w" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":se_junction_1" to="s_out_e" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":se_junction_2" to="v_e_s_n" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":se_junction_3" to="s_e_w" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":se_junction_4" to="s_out_e" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":se_junction_5" to="v_e_s_n" fromLane="0" toLane="0" via=":se_junction_6_0" dir="l" state="m"/>
-    <connection from=":se_junction_6" to="v_e_s_n" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":sw_junction_0" to="s_out_w" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":sw_junction_1" to="s_w_e" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":sw_junction_2" to="v_w_s_n" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":sw_junction_3" to="s_out_w" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":sw_junction_4" to="s_w_e" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":sw_junction_5" to="v_w_s_n" fromLane="0" toLane="0" via=":sw_junction_6_0" dir="l" state="m"/>
-    <connection from=":sw_junction_6" to="v_w_s_n" fromLane="0" toLane="0" dir="l" state="M"/>
+    <connection from=":east_crossing_2" to="v_e_x_s" fromLane="0" toLane="0" dir="r" state="M"/>
+    <connection from=":east_crossing_3" to="rail_out" fromLane="0" toLane="0" dir="s" state="M"/>
+    <connection from=":ne_junction_0" to="v_e_n_s" fromLane="0" toLane="0" dir="r" state="M"/>
+    <connection from=":nw_junction_0" to="v_w_n_s" fromLane="0" toLane="0" dir="r" state="M"/>
+    <connection from=":nw_junction_1" to="n_w_e" fromLane="0" toLane="0" dir="s" state="M"/>
+    <connection from=":se_junction_0" to="s_out_e" fromLane="0" toLane="0" dir="l" state="M"/>
+    <connection from=":se_junction_1" to="s_out_e" fromLane="0" toLane="0" dir="s" state="M"/>
+    <connection from=":sw_junction_0" to="s_w_e" fromLane="0" toLane="0" dir="l" state="M"/>
+    <connection from=":sw_junction_1" to="s_w_e" fromLane="0" toLane="0" dir="s" state="M"/>
     <connection from=":west_crossing_0" to="v_w_x_s" fromLane="0" toLane="0" dir="s" state="M"/>
     <connection from=":west_crossing_1" to="rail_mid" fromLane="0" toLane="0" dir="l" state="M"/>
-    <connection from=":west_crossing_2" to="rail_mid" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":west_crossing_3" to="v_w_x_n" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":west_crossing_4" to="v_w_x_s" fromLane="0" toLane="0" dir="r" state="M"/>
-    <connection from=":west_crossing_5" to="rail_mid" fromLane="0" toLane="0" dir="s" state="M"/>
-    <connection from=":west_crossing_6" to="v_w_x_n" fromLane="0" toLane="0" dir="l" state="M"/>
+    <connection from=":west_crossing_2" to="v_w_x_s" fromLane="0" toLane="0" dir="r" state="M"/>
+    <connection from=":west_crossing_3" to="rail_mid" fromLane="0" toLane="0" dir="s" state="M"/>
 
 </net>

@@ -1,0 +1,54 @@
+{
+  "scenario": "optimized",
+  "total_vehicles": 485,
+  "trip_time": {
+    "total_hours": 42.12130177941988,
+    "average_seconds": 312.6529616616734,
+    "average_minutes": 5.2108826943612225,
+    "median_seconds": 312.6529616616734,
+    "std_dev": 27.41753979649866,
+    "error_margin_seconds": 2.495958775529574,
+    "error_margin_minutes": 0.0415993129254929
+  },
+  "wait_time": {
+    "total_hours": 0.7106755319148935,
+    "average_seconds": 5.275117350296116,
+    "average_minutes": 0.08791862250493528,
+    "median_seconds": 0.0,
+    "std_dev": 15.688607997923173,
+    "error_margin_seconds": 0.8615287080806838,
+    "error_margin_minutes": 0.014358811801344731,
+    "vehicles_with_waits": 48,
+    "percent_with_waits": 9.896907216494846
+  },
+  "queue_length": {
+    "west_average": 1.4349999999999998,
+    "west_max": 9,
+    "east_average": 1.2,
+    "east_max": 5
+  },
+  "fuel_consumption": {
+    "total_liters": 11961.594678430374,
+    "average_per_vehicle": 24.663081811196648,
+    "std_dev": 2.285374727533922,
+    "error_margin": 0.19651660213734629
+  },
+  "co2_emissions": {
+    "total_kg": 27631.283707174163,
+    "average_per_vehicle": 56.97171898386426,
+    "std_dev": 5.279215620603359,
+    "error_margin": 0.4539533509372699
+  },
+  "trip_comfort": {
+    "average_score": 99.05666037873802,
+    "median_score": 99.3,
+    "std_dev": 2.1,
+    "error_margin": 0.2,
+    "min_score": 84.59702127659575,
+    "max_score": 100.0
+  },
+  "route_distribution": {
+    "west": 420,
+    "east": 65
+  }
+}

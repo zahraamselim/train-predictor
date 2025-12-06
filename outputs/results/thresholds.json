@@ -1,0 +1,26 @@
+{
+  "closure_before_eta": 16.0,
+  "opening_after_etd": 3.0,
+  "notification_time": 40.549999999999955,
+  "sensor_positions": [
+    1500.0,
+    1000.0,
+    1850.296499999998
+  ],
+  "max_train_speed": 39.0,
+  "statistics": {
+    "clearance_mean": 13.19,
+    "clearance_p95": 14.0,
+    "clearance_max": 16.0,
+    "travel_mean": 18.8975,
+    "travel_p95": 22.049999999999955,
+    "travel_max": 28.0,
+    "n_clearances": 400,
+    "n_travels": 400
+  },
+  "config": {
+    "margin_close": 2.0,
+    "margin_open": 3.0,
+    "driver_reaction": 2.5
+  }
+}

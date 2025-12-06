@@ -4,21 +4,26 @@ network:
   road_length: 2000
 
 traffic:
-  cars_per_hour: 300
-  train_interval: 180
+  cars_per_hour: 1200
+  train_interval: 240
 
 crossings:
   west:
     sensors: [1200, 800, 400]
-    close_before_arrival: 8.0
-    open_after_departure: 5.0
-    warning_time: 25.0
+    close_before_arrival: 120.0
+    open_after_departure: 180.0
+    warning_time: 150.0
 
   east:
     sensors: [1500, 900, 450]
-    close_before_arrival: 10.0
-    open_after_departure: 3.0
-    warning_time: 30.0
+    close_before_arrival: 60.0
+    open_after_departure: 90.0
+    warning_time: 90.0
+
+routing:
+  travel_time_west_to_east: 180.0
+  reroute_threshold: 60.0
+  adoption_rate: 0.70
 
 fuel:
   driving: 0.08
@@ -26,12 +31,7 @@ fuel:
   engine_off: 0.0
   co2_per_liter: 2.31
   min_wait_to_shutoff: 5.0
-  engine_off_factor: 0.7
-
-rerouting:
-  min_time_saved: 8.0
-  decision_point: 180
 
 simulation:
-  duration: 1200
+  duration: 3600
   step_size: 0.1

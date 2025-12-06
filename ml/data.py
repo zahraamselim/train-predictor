@@ -1,6 +1,6 @@
 """
 Data preparation: generation, feature extraction, and visualization
-Run: python -m ml.data_preparation
+Run: python -m ml.data
 """
 import subprocess
 import pandas as pd
@@ -11,6 +11,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 from utils.logger import Logger
 from ml.network import NetworkGenerator
+
 
 class Data:
     def __init__(self, config_path='ml/config.yaml'):
@@ -25,62 +26,43 @@ class Data:
         
         self.network_gen = NetworkGenerator(config_path)
         self.sensors = self.config['sensors']
+        
+        sensor_positions = [self.sensors['s0'], self.sensors['s1'], self.sensors['s2']]
+        if not (sensor_positions[0] >= sensor_positions[1] >= sensor_positions[2]):
+            Logger.log(f"ERROR: Sensors not in descending order in config!")
+            Logger.log(f"S0={sensor_positions[0]}, S1={sensor_positions[1]}, S2={sensor_positions[2]}")
+            raise ValueError("Sensor positions must be in descending order: s0 >= s1 >= s2")
     
     def generate_train_params(self, n_samples):
-        """Generate random train parameters with realistic operating profiles"""
+        """Generate train parameters with realistic operating profiles"""
         np.random.seed(self.config['training']['random_seed'])
+        
+        scenarios = {
+            'fast': {'speed': (40, 48), 'accel': (0.3, 0.8), 'decel': (0.3, 0.8)},
+            'moderate': {'speed': (30, 40), 'accel': (0.5, 1.2), 'decel': (0.5, 1.2)},
+            'slow': {'speed': (20, 32), 'accel': (0.3, 0.7), 'decel': (0.8, 1.5)},
+            'accelerating': {'speed': (25, 35), 'accel': (1.5, 2.0), 'decel': (0.5, 1.0)},
+            'decelerating': {'speed': (35, 45), 'accel': (0.3, 0.8), 'decel': (1.5, 2.0)}
+        }
         
         params = []
         for _ in range(n_samples):
-            # All trains can go up to 50 m/s (speed_factor = 1.0)
-            # Variation comes from depart_speed and accel/decel
-            
-            # Choose realistic train operating scenario
-            scenario = np.random.choice(['fast', 'moderate', 'slow', 'accelerating', 'decelerating'])
-            
-            if scenario == 'fast':
-                # Fast train, already at high speed, maintains it
-                depart_speed = np.random.uniform(40, 48)
-                accel = np.random.uniform(0.3, 0.8)  # Low accel (already fast)
-                decel = np.random.uniform(0.3, 0.8)  # Low decel (maintains speed)
-                
-            elif scenario == 'moderate':
-                # Regular freight train, steady moderate speed
-                depart_speed = np.random.uniform(30, 40)
-                accel = np.random.uniform(0.5, 1.2)
-                decel = np.random.uniform(0.5, 1.2)
-                
-            elif scenario == 'slow':
-                # Cautious/heavy train, stays slow
-                depart_speed = np.random.uniform(20, 32)
-                accel = np.random.uniform(0.3, 0.7)  # Low accel (stays slow)
-                decel = np.random.uniform(0.8, 1.5)
-                
-            elif scenario == 'accelerating':
-                # Train gaining speed rapidly
-                depart_speed = np.random.uniform(25, 35)
-                accel = np.random.uniform(1.5, 2.0)  # High accel (speeding up)
-                decel = np.random.uniform(0.5, 1.0)
-                
-            else:  # decelerating
-                # Train slowing down
-                depart_speed = np.random.uniform(35, 45)
-                accel = np.random.uniform(0.3, 0.8)
-                decel = np.random.uniform(1.5, 2.0)  # High decel (slowing down)
+            scenario = np.random.choice(list(scenarios.keys()))
+            s = scenarios[scenario]
             
             params.append({
-                'depart_speed': depart_speed,
-                'accel': accel,
-                'decel': decel,
+                'depart_speed': np.random.uniform(*s['speed']),
+                'accel': np.random.uniform(*s['accel']),
+                'decel': np.random.uniform(*s['decel']),
                 'length': np.random.choice([100, 150, 200, 250]),
-                'speed_factor': 1.0,  # All trains CAN go 50 m/s, but behavior varies
+                'speed_factor': 1.0,
                 'scenario': scenario
             })
         
         return params
     
     def run_simulation(self, train_params, run_id):
-        """Run one SUMO simulation"""
+        """Run SUMO simulation for one train"""
         route_file = self.network_gen.generate_route_file(train_params, run_id)
         config_file = self.network_gen.generate_config_file(route_file, run_id)
         
@@ -99,7 +81,8 @@ class Data:
         if not Path(fcd_file).exists():
             return None
         
-        data = self.parse_fcd(fcd_file, run_id, train_params['length'], train_params.get('scenario', 'unknown'))
+        data = self.parse_fcd(fcd_file, run_id, train_params['length'], 
+                              train_params.get('scenario', 'unknown'))
         Path(fcd_file).unlink(missing_ok=True)
         
         return data
@@ -130,7 +113,7 @@ class Data:
         return pd.DataFrame(data) if data else None
     
     def generate_trajectories(self, n_samples):
-        """Generate training data"""
+        """Generate training trajectories"""
         Logger.section(f"Generating {n_samples} training samples")
         
         net_file = self.network_gen.generate()
@@ -141,7 +124,6 @@ class Data:
         train_params = self.generate_train_params(n_samples)
         all_data = []
         successful = 0
-        scenario_counts = {}
         
         for i, params in enumerate(train_params):
             df = self.run_simulation(params, i)
@@ -149,8 +131,6 @@ class Data:
             if df is not None and len(df) > 10:
                 all_data.append(df)
                 successful += 1
-                scenario = params.get('scenario', 'unknown')
-                scenario_counts[scenario] = scenario_counts.get(scenario, 0) + 1
                 
                 if (i + 1) % 100 == 0:
                     Logger.log(f"Progress: {successful}/{i+1} ({successful/(i+1)*100:.1f}%)")
@@ -165,22 +145,16 @@ class Data:
         
         Logger.log(f"Generated {successful} trajectories with {len(combined)} data points")
         Logger.log(f"Success rate: {successful}/{len(train_params)} ({successful/len(train_params)*100:.1f}%)")
-        Logger.log("Scenario distribution:")
-        for scenario, count in sorted(scenario_counts.items()):
-            Logger.log(f"  {scenario}: {count} ({count/successful*100:.1f}%)")
         Logger.log(f"Saved to {output_path}")
-        
-        if successful < n_samples * 0.85:
-            Logger.log(f"WARNING: Success rate below 85%. Consider increasing sim_duration in config.yaml")
         
         return combined
     
     def calculate_physics_prediction(self, speed, distance):
-        """Simple physics baseline"""
+        """Simple physics baseline: time = distance / speed"""
         return distance / speed if speed > 0 else 0
     
     def extract_features_from_trajectory(self, run_df):
-        """Extract features from one trajectory"""
+        """Extract features from single trajectory"""
         run_df = run_df.sort_values('time')
         train_length = run_df['length'].iloc[0]
         scenario = run_df['scenario'].iloc[0] if 'scenario' in run_df.columns else 'unknown'
@@ -232,14 +206,11 @@ class Data:
         avg_speed_01 = (positions[1] - positions[0]) / time_01 if time_01 > 0 else 0
         avg_speed_12 = (positions[2] - positions[1]) / time_12 if time_12 > 0 else 0
         
-        # Calculate acceleration trend (is train speeding up or slowing down?)
-        accel_01 = (speeds[1] - speeds[0]) / time_01 if time_01 > 0 else 0
         accel_12 = (speeds[2] - speeds[1]) / time_12 if time_12 > 0 else 0
         
-        # Predicted speed at crossing (extrapolate from acceleration trend)
         time_to_crossing = distance_remaining / last_speed if last_speed > 0 else 0
         predicted_crossing_speed = last_speed + (accel_12 * time_to_crossing)
-        predicted_crossing_speed = max(5.0, min(50.0, predicted_crossing_speed))  # Clamp to realistic range
+        predicted_crossing_speed = max(5.0, min(50.0, predicted_crossing_speed))
         
         return {
             'distance_remaining': distance_remaining,
@@ -250,8 +221,8 @@ class Data:
             'time_12': time_12,
             'avg_speed_01': avg_speed_01,
             'avg_speed_12': avg_speed_12,
-            'accel_trend': accel_12,  # NEW: Recent acceleration
-            'predicted_speed_at_crossing': predicted_crossing_speed,  # NEW: Extrapolated speed
+            'accel_trend': accel_12,
+            'predicted_speed_at_crossing': predicted_crossing_speed,
             'eta_actual': eta_actual,
             'etd_actual': etd_actual,
             'eta_physics': eta_physics,
@@ -297,8 +268,10 @@ class Data:
         """Plot sample train trajectories"""
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
         
-        sample_runs = np.random.choice(trajectory_df['run_id'].unique(), 6, replace=False)
-        colors = plt.cm.tab10(np.linspace(0, 1, 6))
+        sample_runs = np.random.choice(trajectory_df['run_id'].unique(), 
+                                      min(6, len(trajectory_df['run_id'].unique())), 
+                                      replace=False)
+        colors = plt.cm.tab10(np.linspace(0, 1, len(sample_runs)))
         
         ax = axes[0, 0]
         for i, run_id in enumerate(sample_runs):
@@ -309,16 +282,13 @@ class Data:
                    color=colors[i], linewidth=2, alpha=0.8)
         
         for name, pos in self.sensors.items():
-            if name != 'crossing':
-                ax.axhline(pos, color='gray', linestyle='--', alpha=0.5)
-                ax.text(5, pos + 50, f'Sensor {name}', fontsize=9, color='gray')
-            else:
-                ax.axhline(pos, color='red', linestyle='-', linewidth=2, alpha=0.7)
-                ax.text(5, pos + 50, 'CROSSING', fontsize=10, color='red', fontweight='bold')
+            style = '-' if name == 'crossing' else '--'
+            color = 'red' if name == 'crossing' else 'gray'
+            ax.axhline(pos, color=color, linestyle=style, linewidth=2 if name == 'crossing' else 1, alpha=0.7)
         
         ax.set_xlabel('Time (seconds)', fontsize=12)
         ax.set_ylabel('Position (meters)', fontsize=12)
-        ax.set_title('Sample Train Trajectories (Variable Speed Profiles)', fontsize=14, fontweight='bold')
+        ax.set_title('Sample Train Trajectories', fontsize=14, fontweight='bold')
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
@@ -332,7 +302,7 @@ class Data:
         
         ax.set_xlabel('Time (seconds)', fontsize=12)
         ax.set_ylabel('Speed (m/s)', fontsize=12)
-        ax.set_title('Train Speed Profiles (Now with Variance!)', fontsize=14, fontweight='bold')
+        ax.set_title('Train Speed Profiles', fontsize=14, fontweight='bold')
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
         
@@ -346,7 +316,7 @@ class Data:
         
         ax.axhline(0, color='black', linestyle='-', linewidth=1)
         ax.set_xlabel('Time (seconds)', fontsize=12)
-        ax.set_ylabel('Acceleration (m/s²)', fontsize=12)
+        ax.set_ylabel('Acceleration (m/s^2)', fontsize=12)
         ax.set_title('Train Acceleration Profiles', fontsize=14, fontweight='bold')
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
@@ -360,10 +330,9 @@ class Data:
                    color=colors[i], linewidth=2, alpha=0.8)
         
         for name, pos in self.sensors.items():
-            if name != 'crossing':
-                ax.axvline(pos, color='gray', linestyle='--', alpha=0.5)
-            else:
-                ax.axvline(pos, color='red', linestyle='-', linewidth=2, alpha=0.7)
+            style = '-' if name == 'crossing' else '--'
+            color = 'red' if name == 'crossing' else 'gray'
+            ax.axvline(pos, color=color, linestyle=style, linewidth=2 if name == 'crossing' else 1, alpha=0.7)
         
         ax.set_xlabel('Position (meters)', fontsize=12)
         ax.set_ylabel('Speed (m/s)', fontsize=12)
@@ -428,10 +397,14 @@ class Data:
             ax.scatter(features_df[feature], features_df['eta_actual'], 
                       alpha=0.4, s=10, color='blue')
             
-            z = np.polyfit(features_df[feature], features_df['eta_actual'], 1)
-            p = np.poly1d(z)
-            x_line = np.linspace(features_df[feature].min(), features_df[feature].max(), 100)
-            ax.plot(x_line, p(x_line), "b-", linewidth=2, alpha=0.8)
+            if features_df[feature].std() > 0.01:
+                try:
+                    z = np.polyfit(features_df[feature], features_df['eta_actual'], 1)
+                    p = np.poly1d(z)
+                    x_line = np.linspace(features_df[feature].min(), features_df[feature].max(), 100)
+                    ax.plot(x_line, p(x_line), "b-", linewidth=2, alpha=0.8)
+                except:
+                    pass
             
             corr = features_df[feature].corr(features_df['eta_actual'])
             
@@ -449,37 +422,24 @@ class Data:
         
         fig, axes = plt.subplots(1, 2, figsize=(16, 6))
         
-        ax = axes[0]
-        ax.scatter(features_df['eta_actual'], features_df['eta_physics'], 
-                  alpha=0.5, s=20, color='blue')
-        
-        min_val = min(features_df['eta_actual'].min(), features_df['eta_physics'].min())
-        max_val = max(features_df['eta_actual'].max(), features_df['eta_physics'].max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect prediction')
-        
-        physics_error = np.mean(np.abs(features_df['eta_actual'] - features_df['eta_physics']))
-        ax.set_xlabel('Actual ETA (seconds)', fontsize=12)
-        ax.set_ylabel('Physics Prediction (seconds)', fontsize=12)
-        ax.set_title(f'ETA: Physics Baseline\nMAE = {physics_error:.3f}s', 
-                    fontsize=14, fontweight='bold')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        ax = axes[1]
-        ax.scatter(features_df['etd_actual'], features_df['etd_physics'], 
-                  alpha=0.5, s=20, color='red')
-        
-        min_val = min(features_df['etd_actual'].min(), features_df['etd_physics'].min())
-        max_val = max(features_df['etd_actual'].max(), features_df['etd_physics'].max())
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect prediction')
-        
-        physics_error = np.mean(np.abs(features_df['etd_actual'] - features_df['etd_physics']))
-        ax.set_xlabel('Actual ETD (seconds)', fontsize=12)
-        ax.set_ylabel('Physics Prediction (seconds)', fontsize=12)
-        ax.set_title(f'ETD: Physics Baseline\nMAE = {physics_error:.3f}s', 
-                    fontsize=14, fontweight='bold')
-        ax.legend()
-        ax.grid(True, alpha=0.3)
+        for idx, (target, physics) in enumerate([('eta_actual', 'eta_physics'), 
+                                                   ('etd_actual', 'etd_physics')]):
+            ax = axes[idx]
+            color = 'blue' if idx == 0 else 'red'
+            ax.scatter(features_df[target], features_df[physics], alpha=0.5, s=20, color=color)
+            
+            min_val = min(features_df[target].min(), features_df[physics].min())
+            max_val = max(features_df[target].max(), features_df[physics].max())
+            ax.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect prediction')
+            
+            physics_error = np.mean(np.abs(features_df[target] - features_df[physics]))
+            label = 'ETA' if idx == 0 else 'ETD'
+            ax.set_xlabel(f'Actual {label} (seconds)', fontsize=12)
+            ax.set_ylabel('Physics Prediction (seconds)', fontsize=12)
+            ax.set_title(f'{label}: Physics Baseline\nMAE = {physics_error:.3f}s', 
+                        fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
         
         plt.tight_layout()
         plot_path = self.plots_dir / 'physics_comparison.png'

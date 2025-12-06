@@ -6,8 +6,8 @@ network:
 
 sensors:
   s0: 1500
-  s1: 2100
-  s2: 2550
+  s1: 1000
+  s2: 800
   crossing: 3000
 
 training:
@@ -18,5 +18,18 @@ training:
     lengths: [100, 150, 200, 250]
 
 model:
-  type: linear_regression
+  type: gradient_boosting
   test_size: 0.2
+
+  hyperparameters:
+    n_estimators: 200
+    learning_rate: 0.05
+    max_depth: 4
+    min_samples_split: 3
+    min_samples_leaf: 2
+    subsample: 0.9
+    max_features: sqrt
+    validation_fraction: 0.15
+    n_iter_no_change: 15
+    tol: 0.00001
+    random_state: 42

@@ -1,8 +1,5 @@
 #include <Servo.h>
 #include <TM1637Display.h>
-#include "train_models.h"
-#include "scale_config.h"
-#include "thresholds_config.h"
 
 #define SENSOR_0_PIN 2
 #define SENSOR_1_PIN 3
@@ -42,9 +39,7 @@ enum SystemState {
     IDLE,
     TRAIN_DETECTED,
     INTERSECTION_NOTIFIED,
-    GATES_CLOSING,
-    GATES_CLOSED,
-    GATES_OPENING
+    GATES_CLOSED
 };
 
 SystemState current_state = IDLE;
@@ -62,6 +57,11 @@ void printTime() {
     if (s < 10) Serial.print("0");
     Serial.print(s);
     Serial.print("] ");
+}
+
+float simplePredict(float distance, float speed, float length) {
+    if (speed < 0.1) speed = 0.1;
+    return (distance + length) / speed;
 }
 
 void setup() {
@@ -89,11 +89,12 @@ void setup() {
     digitalWrite(BUZZER_PIN, LOW);
     
     printTime();
-    Serial.println("Demonstration Level Crossing System");
+    Serial.println("Railroad Crossing Control System");
     printTime();
-    Serial.println("Scale: 5cm between sensors, 20cm to crossing");
+    Serial.println("Scale: 5cm sensors, 20cm to crossing");
     printTime();
-    Serial.println("Ready - waiting for train detection");
+    Serial.println("Ready - waiting for train");
+    Serial.println();
 }
 
 void loop() {
@@ -102,11 +103,14 @@ void loop() {
     if (current_state == TRAIN_DETECTED) {
         if (sensor_triggered[0] && sensor_triggered[1] && sensor_triggered[2]) {
             calculatePredictions();
-            current_state = IDLE;
             
-            float time_to_closure = predicted_eta - CLOSURE_THRESHOLD;
-            if (time_to_closure > 0) {
-                updateCountdown(time_to_closure);
+            float time_to_notify = predicted_eta - NOTIFICATION_THRESHOLD;
+            if (time_to_notify > 0) {
+                printTime();
+                Serial.print("Predictions ready. Notification in ");
+                Serial.print(time_to_notify, 1);
+                Serial.println("s");
+                current_state = IDLE;
             }
         }
     }
@@ -122,28 +126,20 @@ void loop() {
         }
         
         if (current_state == INTERSECTION_NOTIFIED && remaining_eta <= CLOSURE_THRESHOLD) {
-            closeGates();
+            closeGates(remaining_etd);
             current_state = GATES_CLOSED;
         }
         
         if (current_state == INTERSECTION_NOTIFIED) {
             updateBuzzer();
             float time_to_closure = remaining_eta - CLOSURE_THRESHOLD;
-            if (time_to_closure > 0) {
-                updateCountdown(time_to_closure);
-            } else {
-                updateCountdown(0);
-            }
+            updateCountdown(time_to_closure > 0 ? time_to_closure : 0);
         }
         
         if (current_state == GATES_CLOSED) {
             updateBuzzer();
             float time_to_open = remaining_etd + OPENING_THRESHOLD;
-            if (time_to_open > 0) {
-                updateCountdown(time_to_open);
-            } else {
-                updateCountdown(0);
-            }
+            updateCountdown(time_to_open > 0 ? time_to_open : 0);
             
             if (remaining_etd + OPENING_THRESHOLD <= 0) {
                 openGates();
@@ -170,13 +166,9 @@ void checkSensors() {
             Serial.print(i);
             Serial.print(" triggered");
             
-            if (i == 0) {
-                Serial.print(" (20cm from crossing)");
-            } else if (i == 1) {
-                Serial.print(" (15cm from crossing)");
-            } else if (i == 2) {
-                Serial.print(" (10cm from crossing)");
-            }
+            if (i == 0) Serial.print(" (20cm)");
+            else if (i == 1) Serial.print(" (15cm)");
+            else Serial.print(" (10cm)");
             Serial.println();
         }
     }
@@ -188,53 +180,27 @@ void calculatePredictions() {
     
     if (dt01 <= 0 || dt12 <= 0) {
         printTime();
-        Serial.println("ERROR: Invalid timing intervals");
+        Serial.println("ERROR: Invalid timing");
         resetSystem();
         return;
     }
     
-    float dist01 = SENSOR_0_POS - SENSOR_1_POS;
-    float dist12 = SENSOR_1_POS - SENSOR_2_POS;
-    float s01 = dist01 / dt01;
-    float s12 = dist12 / dt12;
-    float accel = (s12 - s01) / dt12;
-    float avg_s = (s01 + s12) / 2.0;
-    float var_s = ((s01 - avg_s) * (s01 - avg_s) + (s12 - avg_s) * (s12 - avg_s)) / 2.0;
-    float speed_trend = (s12 - s01) / dt12;
-    float time_var = ((dt01 - (dt01 + dt12) / 2) * (dt01 - (dt01 + dt12) / 2) + 
-                      (dt12 - (dt01 + dt12) / 2) * (dt12 - (dt01 + dt12) / 2)) / 2.0;
+    float speed = (SENSOR_1_POS - SENSOR_2_POS) / dt12;
+    float accel = ((SENSOR_1_POS - SENSOR_2_POS) / dt12 - 
+                   (SENSOR_0_POS - SENSOR_1_POS) / dt01) / dt12;
     
-    float length_speed_ratio = TRAIN_LENGTH / s12;
-    float distance_length_ratio = SENSOR_2_POS / TRAIN_LENGTH;
-    
-    float features[14];
-    features[0] = SENSOR_2_POS;
-    features[1] = TRAIN_LENGTH;
-    features[2] = s12;
-    features[3] = accel;
-    features[4] = speed_trend;
-    features[5] = var_s;
-    features[6] = time_var;
-    features[7] = avg_s;
-    features[8] = length_speed_ratio;
-    features[9] = distance_length_ratio;
-    features[10] = dt01;
-    features[11] = dt12;
-    features[12] = s01;
-    features[13] = s12;
-    
-    predicted_eta = predictETA(features);
-    predicted_etd = predictETD(features);
+    predicted_eta = simplePredict(SENSOR_2_POS, speed, 0);
+    predicted_etd = simplePredict(SENSOR_2_POS, speed, TRAIN_LENGTH);
     prediction_time = millis();
     
     printTime();
-    Serial.println("Train parameters calculated:");
+    Serial.println("Train detected:");
     printTime();
     Serial.print("  Speed: ");
-    Serial.print(s12, 2);
+    Serial.print(speed, 1);
     Serial.println(" cm/s");
     printTime();
-    Serial.print("  Acceleration: ");
+    Serial.print("  Accel: ");
     Serial.print(accel, 2);
     Serial.println(" cm/s²");
     printTime();
@@ -245,6 +211,7 @@ void calculatePredictions() {
     Serial.print("  ETD: ");
     Serial.print(predicted_etd, 1);
     Serial.println("s");
+    Serial.println();
 }
 
 void notifyIntersections(float remaining) {
@@ -252,14 +219,15 @@ void notifyIntersections(float remaining) {
     digitalWrite(INTER_RED_LED, HIGH);
     
     printTime();
-    Serial.println("INTERSECTION NOTIFIED - Buzzer activated");
+    Serial.println("INTERSECTION ALERT");
     printTime();
-    Serial.print("  Time to gate closure: ");
+    Serial.print("  Gates close in: ");
     Serial.print(remaining - CLOSURE_THRESHOLD, 1);
     Serial.println("s");
+    Serial.println();
 }
 
-void closeGates() {
+void closeGates(float wait_time) {
     gateServo.write(GATE_CLOSED_ANGLE);
     digitalWrite(CROSSING_GREEN_LED, LOW);
     digitalWrite(CROSSING_RED_LED, HIGH);
@@ -268,8 +236,9 @@ void closeGates() {
     Serial.println("GATES CLOSED");
     printTime();
     Serial.print("  Wait time: ");
-    Serial.print(predicted_etd + OPENING_THRESHOLD, 1);
+    Serial.print(wait_time + OPENING_THRESHOLD, 1);
     Serial.println("s");
+    Serial.println();
 }
 
 void openGates() {
@@ -282,7 +251,8 @@ void openGates() {
     display.clear();
     
     printTime();
-    Serial.println("GATES OPEN - System ready");
+    Serial.println("GATES OPEN");
+    Serial.println();
 }
 
 void updateCountdown(float remaining) {
