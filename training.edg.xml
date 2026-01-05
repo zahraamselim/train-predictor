@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<edges>
-    <edge id="track" from="start" to="end" priority="1" numLanes="1" 
-          speed="50.0"/>
-</edges>

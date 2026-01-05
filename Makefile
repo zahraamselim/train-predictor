@@ -1,205 +1,103 @@
-.PHONY: help build up down shell clean
-.PHONY: th-network th-collect th-analyze th-export th-pipeline th-quick th-clean
-.PHONY: ml-data ml-train ml-pipeline ml-quick ml-clean
-.PHONY: sim-network sim-run sim-gui sim-pipeline sim-clean
-.PHONY: hw-export hw-clean
-.PHONY: all test
+.PHONY: help train simulate arduino quick clean all
 
-DOCKER_RUN = cd docker && docker-compose run --rm sumo
+DOCKER = cd docker && docker-compose run --rm sumo
 PYTHON = python3
 
 help:
-	@echo "Railroad Crossing Control System - Makefile"
+	@echo "Railway Crossing Control System"
 	@echo ""
 	@echo "Complete Pipeline:"
-	@echo "  make all           - Run complete system (thresholds + ML + simulation + hardware export)"
-	@echo "  make test          - Quick test of all modules"
+	@echo "  make all           - Run complete system (train + simulate + arduino)"
+	@echo "  make quick         - Quick test (50 samples, no simulation)"
 	@echo ""
-	@echo "Thresholds Module:"
-	@echo "  make th-pipeline   - Generate thresholds (network + collect + analyze)"
-	@echo "  make th-network    - Generate SUMO network"
-	@echo "  make th-collect    - Collect traffic data (1 hour)"
-	@echo "  make th-analyze    - Calculate thresholds from data"
-	@echo "  make th-export     - Export thresholds to Arduino (included in th-pipeline)"
-	@echo "  make th-quick      - Quick test (5 min simulation)"
-	@echo "  make th-clean      - Remove generated files"
+	@echo "Individual Steps:"
+	@echo "  make train         - Generate training data and train models (5 min)"
+	@echo "  make simulate      - Run traffic simulation (30 min, needed for poster)"
+	@echo "  make arduino       - Export models/config to Arduino"
 	@echo ""
-	@echo "ML Module:"
-	@echo "  make ml-pipeline   - Train models (data + train)"
-	@echo "  make ml-data       - Generate training data (1000 samples)"
-	@echo "  make ml-train      - Train ETA/ETD models"
-	@echo "  make ml-quick      - Quick test (50 samples)"
-	@echo "  make ml-clean      - Remove generated files"
-	@echo ""
-	@echo "Simulation Module:"
-	@echo "  make sim-pipeline  - Run simulation (network + both phases)"
-	@echo "  make sim-network   - Generate simulation network"
-	@echo "  make sim-run       - Run two-phase simulation"
-	@echo "  make sim-gui       - Run with GUI visualization"
-	@echo "  make sim-clean     - Remove generated files"
-	@echo ""
-	@echo "Hardware Module:"
-	@echo "  make hw-export     - Export all to Arduino (thresholds + models + config)"
-	@echo "  make hw-clean      - Remove generated Arduino headers"
-	@echo ""
-	@echo "Docker Commands:"
+	@echo "Docker:"
 	@echo "  make build         - Build Docker container"
-	@echo "  make up            - Start Docker container"
-	@echo "  make down          - Stop Docker container"
 	@echo "  make shell         - Open shell in container"
 	@echo ""
 	@echo "Maintenance:"
-	@echo "  make clean         - Clean all generated files"
+	@echo "  make clean         - Remove all generated files"
 
 build:
 	cd docker && docker-compose build
 
-up:
-	cd docker && docker-compose up -d
-
-down:
-	cd docker && docker-compose down
-
 shell:
-	$(DOCKER_RUN) /bin/bash
+	$(DOCKER) /bin/bash
 
-th-network:
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.network
-
-th-collect:
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.collector
-
-th-analyze:
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.analyzer
-
-th-export:
-	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.threshold
-
-th-pipeline: th-network th-collect th-analyze th-export
+train:
+	@echo "Generating training data and training models..."
+	$(DOCKER) $(PYTHON) train_data.py
+	$(DOCKER) $(PYTHON) train_models.py
 	@echo ""
-	@echo "Thresholds pipeline complete"
+	@echo "Training complete!"
 	@echo "Results:"
-	@echo "  - outputs/results/thresholds.yaml"
-	@echo "  - hardware/thresholds.h"
+	@echo "  outputs/features.csv"
+	@echo "  outputs/eta_model.pkl"
+	@echo "  outputs/etd_model.pkl"
+	@echo "  outputs/model_results.json"
 
-th-quick:
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.network
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.collector --duration 300
-	$(DOCKER_RUN) $(PYTHON) -m thresholds.analyzer
-	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.threshold
+simulate:
+	@echo "Running traffic simulation (Phase 1 + Phase 2)..."
+	$(DOCKER) $(PYTHON) run_simulation.py
 	@echo ""
-	@echo "Quick thresholds test complete (reduced accuracy with 5min data)"
-
-th-clean:
-	rm -rf outputs/data/clearances.csv outputs/data/travels.csv
-	rm -rf outputs/plots/thresholds_analysis.png
-	rm -rf outputs/results/thresholds.yaml outputs/results/thresholds.json
-	rm -f thresholds.*.xml temp_*
-
-ml-data:
-	$(DOCKER_RUN) $(PYTHON) -m ml.data
-
-ml-train:
-	$(DOCKER_RUN) $(PYTHON) -m ml.model
-
-ml-pipeline: ml-data ml-train
-	@echo ""
-	@echo "ML pipeline complete"
+	@echo "Simulation complete!"
 	@echo "Results:"
-	@echo "  - outputs/models/eta_model.pkl"
-	@echo "  - outputs/models/etd_model.pkl"
-	@echo "  - outputs/results/evaluation_results.json"
+	@echo "  outputs/phase1_vehicles.csv"
+	@echo "  outputs/phase2_vehicles.csv"
+	@echo "  outputs/comparison.json"
 
-ml-quick:
-	$(DOCKER_RUN) $(PYTHON) -m ml.data --samples 50
-	$(DOCKER_RUN) $(PYTHON) -m ml.model
-	@echo ""
-	@echo "Quick ML test complete (reduced accuracy with 50 samples)"
-
-ml-clean:
-	rm -rf outputs/data/raw_trajectories.csv outputs/data/features.csv
-	rm -rf outputs/models/
-	rm -rf outputs/plots/train_trajectories.png outputs/plots/feature_*.png
-	rm -rf outputs/plots/physics_comparison.png outputs/plots/eta_*.png outputs/plots/etd_*.png
-	rm -rf outputs/results/evaluation_results.json
-	rm -f training.*.xml temp_*
-
-sim-network:
-	$(DOCKER_RUN) $(PYTHON) -m simulation.network
-
-sim-run:
-	$(DOCKER_RUN) $(PYTHON) -m simulation.controller
-
-sim-gui:
+simulate-gui:
+	@echo "Running simulation with GUI..."
 	@command -v xhost >/dev/null 2>&1 && xhost +local:docker || true
-	$(DOCKER_RUN) $(PYTHON) -m simulation.controller --gui
+	$(DOCKER) $(PYTHON) run_simulation.py --gui
 
-sim-pipeline: sim-network sim-run
-	@echo ""
-	@echo "Simulation pipeline complete"
-	@echo "Results:"
-	@echo "  - outputs/data/phase1_vehicles.csv"
-	@echo "  - outputs/data/phase2_vehicles.csv"
-	@echo "  - outputs/results/comparison.json"
-
-sim-clean:
-	rm -rf outputs/data/phase1_vehicles.csv outputs/data/phase2_vehicles.csv
-	rm -rf outputs/results/phase1_metrics.json outputs/results/phase2_metrics.json
-	rm -rf outputs/results/optimized_metrics.json outputs/results/comparison.json
-	rm -f simulation.*.xml view.xml temp_*
-
-hw-export:
+arduino:
 	@echo "Exporting to Arduino..."
-	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.threshold
-	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.model
-	$(DOCKER_RUN) $(PYTHON) -m hardware.exporters.config
+	$(DOCKER) $(PYTHON) export_arduino.py
 	@echo ""
-	@echo "Hardware export complete"
+	@echo "Arduino export complete!"
 	@echo "Generated files:"
-	@echo "  - hardware/thresholds.h"
-	@echo "  - hardware/eta_model.h"
-	@echo "  - hardware/crossing_config.h"
+	@echo "  arduino/model.h"
+	@echo "  arduino/thresholds.h"
+	@echo "  arduino/config.h"
 	@echo ""
-	@echo "Ready to upload sketch.ino to Arduino"
+	@echo "Ready to upload arduino/sketch.ino"
 
-hw-clean:
-	rm -f hardware/thresholds.h
-	rm -f hardware/eta_model.h
-	rm -f hardware/etd_model.h
-	rm -f hardware/crossing_config.h
+quick:
+	@echo "Quick test (50 samples, no simulation)..."
+	$(DOCKER) $(PYTHON) train_data.py --samples 50
+	$(DOCKER) $(PYTHON) train_models.py
+	$(DOCKER) $(PYTHON) export_arduino.py
+	@echo ""
+	@echo "Quick test complete!"
 
-all: th-pipeline ml-pipeline sim-pipeline hw-export
+all: train simulate arduino
 	@echo ""
-	@echo "Complete pipeline finished successfully"
-	@echo ""
-	@echo "Thresholds:"
-	@echo "  - outputs/results/thresholds.yaml"
-	@echo "  - hardware/thresholds.h"
+	@echo "Complete pipeline finished!"
 	@echo ""
 	@echo "ML Models:"
-	@echo "  - outputs/models/eta_model.pkl"
-	@echo "  - outputs/models/etd_model.pkl"
-	@echo "  - outputs/results/evaluation_results.json"
+	@echo "  outputs/eta_model.pkl"
+	@echo "  outputs/etd_model.pkl"
+	@echo "  outputs/model_results.json"
 	@echo ""
 	@echo "Simulation:"
-	@echo "  - outputs/results/comparison.json"
-	@echo "  - outputs/data/phase1_vehicles.csv"
-	@echo "  - outputs/data/phase2_vehicles.csv"
+	@echo "  outputs/phase1_vehicles.csv"
+	@echo "  outputs/phase2_vehicles.csv"
+	@echo "  outputs/comparison.json"
 	@echo ""
-	@echo "Hardware:"
-	@echo "  - hardware/thresholds.h"
-	@echo "  - hardware/eta_model.h"
-	@echo "  - hardware/crossing_config.h"
+	@echo "Arduino:"
+	@echo "  arduino/model.h"
+	@echo "  arduino/thresholds.h"
+	@echo "  arduino/config.h"
 	@echo ""
 	@echo "Ready for Arduino deployment!"
-	@echo "Upload hardware/sketch.ino to your Arduino"
 
-test: th-quick ml-quick sim-network hw-export
-	@echo ""
-	@echo "Quick test complete - all modules functional"
-	@echo "Run 'make all' for full pipeline with accurate results"
-
-clean: th-clean ml-clean sim-clean hw-clean
+clean:
 	rm -rf outputs/
 	rm -f *.xml temp_*
+	rm -f arduino/model.h arduino/thresholds.h arduino/config.h
 	@echo "All generated files cleaned"

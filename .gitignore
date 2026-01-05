@@ -48,3 +48,4 @@ docker/volumes/
 # Test outputs
 test_output/
 *.tmp
+legacy/

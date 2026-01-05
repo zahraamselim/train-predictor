@@ -1,0 +1,108 @@
+# Railway Crossing Control System - Unified Configuration
+
+# SUMO Network Configuration
+network:
+  start_x: -2000
+  end_x: 2000
+  track_length: 4000
+  max_speed: 50.0
+
+  # Simulation network (for traffic comparison)
+  road_separation: 200
+  crossing_distance: 300
+  road_length: 2000
+
+# Sensor Positions (distance along track edge)
+# In SUMO, 'pos' = distance traveled along edge (not X coordinate!)
+# Track edge: from X=-2000 to X=2000, so edge length = 4000m
+# Position 0 = start (X=-2000), Position 4000 = end (X=2000)
+# Train travels forward, triggering sensors in order: s0 -> s1 -> s2 -> crossing
+sensors:
+  s0: 500 # First sensor: 500m along track (early warning)
+  s1: 1000 # Second sensor: 1000m along track
+  s2: 1500 # Third sensor: 1500m along track (nearest before crossing)
+  crossing: 2000 # Crossing at 2000m along track
+
+# ML Training Data Generation
+training:
+  n_samples: 2000 # Total train runs (matches poster)
+  sim_duration: 400 # Seconds per simulation
+  random_seed: 42
+
+  # Train behavior scenarios
+  scenarios:
+    fast:
+      speed: [40, 48]
+      accel: [0.3, 0.8]
+      decel: [0.3, 0.8]
+    moderate:
+      speed: [30, 40]
+      accel: [0.5, 1.2]
+      decel: [0.5, 1.2]
+    slow:
+      speed: [20, 32]
+      accel: [0.3, 0.7]
+      decel: [0.8, 1.5]
+    accelerating:
+      speed: [25, 35]
+      accel: [1.5, 2.0]
+      decel: [0.5, 1.0]
+    decelerating:
+      speed: [35, 45]
+      accel: [0.3, 0.8]
+      decel: [1.5, 2.0]
+
+  train_lengths: [100, 150, 200, 250]
+
+# Random Forest Model Configuration (matches poster)
+model:
+  # ETA Model: 10 trees
+  eta_n_estimators: 10
+  eta_max_depth: 8
+  eta_min_samples_split: 5
+  eta_min_samples_leaf: 2
+
+  # ETD Model: 5 trees
+  etd_n_estimators: 5
+  etd_max_depth: 10
+  etd_min_samples_split: 5
+  etd_min_samples_leaf: 2
+
+  test_size: 0.2
+  random_state: 42
+
+# Traffic Simulation Configuration
+simulation:
+  duration: 1800 # 30 minutes per phase
+  step_size: 0.1 # 100ms time steps
+
+  traffic:
+    cars_per_hour: 1200 # Vehicle flow rate
+    train_interval: 240 # Train every 4 minutes
+    train_duration: 90 # Train blocks crossing for 90s
+
+  fuel:
+    driving: 0.08 # L/s while driving
+    idling: 0.01 # L/s while stopped
+    engine_off: 0.0 # L/s when engine off
+    co2_per_liter: 2.31 # kg CO2 per liter
+    min_wait_to_shutoff: 5.0 # Seconds before engine shutoff
+
+  routing:
+    reroute_threshold: 60.0 # Reroute if delay > 60s
+    adoption_rate: 0.70 # 70% of drivers use smart routing
+
+# Physical Demo Configuration (for Arduino)
+demo:
+  sensor_spacing: 0.10 # 10cm between sensors
+  last_sensor_to_crossing: 0.20 # 20cm from S2 to crossing
+  crossing_to_intersection: 0.20 # 20cm from crossing to intersection
+  train_length: 0.30 # 30cm toy train
+
+  # Demo timing (seconds)
+  notification_time: 3.0 # Warn intersection 3s after S0
+  gate_close_time: 5.0 # Close gates 5s after S0
+  gate_open_delay: 3.0 # Wait 3s after train passes
+
+  # Expected hand movement
+  expected_hand_speed: 0.5 # m/s (slow walking speed)
