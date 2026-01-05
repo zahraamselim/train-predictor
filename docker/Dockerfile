@@ -1,9 +1,13 @@
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV SUMO_HOME=/usr/share/sumo
+ENV PATH="${SUMO_HOME}/bin:${PATH}"
+
+RUN sed -i 's|http://archive.ubuntu.com|http://mirrors.wikimedia.org|g' /etc/apt/sources.list && \
+    sed -i 's|http://security.ubuntu.com|http://mirrors.wikimedia.org|g' /etc/apt/sources.list
 
 RUN apt-get update && apt-get install -y \
-    software-properties-common \
     python3 \
     python3-pip \
     sumo \
@@ -15,14 +19,9 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-ENV SUMO_HOME=/usr/share/sumo
-ENV PATH="${SUMO_HOME}/bin:${PATH}"
-
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY . .
 
 CMD ["/bin/bash"]

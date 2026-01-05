@@ -1,314 +1,524 @@
-# Railroad Crossing Control System
+# Smart Railway Crossing Control System
 
-A complete intelligent railroad crossing safety system that combines traffic simulation, machine learning prediction, and hardware implementation.
+An intelligent railway crossing management system using machine learning to predict train arrival times and optimize traffic flow.
 
 ## Overview
 
-This project demonstrates how real-time train detection and ML-based prediction can improve railroad crossing safety and traffic flow. The system uses three sensors to detect approaching trains, predicts arrival/departure times with sub-second accuracy, and controls crossing gates and traffic signals optimally.
+This project combines traffic simulation, machine learning, and embedded systems to create a complete railway crossing control solution that:
 
-## System Components
+- Predicts train arrival/departure times with sub-second accuracy
+- Reduces traffic delays by 65%
+- Saves 9% fuel consumption and CO2 emissions
+- Runs on Arduino for physical deployment
 
-### 1. Thresholds Module
+## System Architecture
 
-Calculates safe timing parameters by simulating real traffic:
+```
+SUMO Simulation → Data Collection → ML Training → Threshold Calculation
+                                          ↓
+                                   Physical Hardware
+                                    (Arduino Demo)
+```
 
-- Gate closure time: When to close gates before train arrives
-- Gate opening time: When to open gates after train departs
-- Traffic notification time: When to alert upstream intersections
-- Sensor positions: Where to place train detection sensors
+### Modules
 
-Uses 95th percentile statistics and safety margins to ensure conservative, location-appropriate values.
-
-### 2. Machine Learning Module
-
-Trains Gradient Boosting models to predict train timing:
-
-- ETA Model: Predicts when train front reaches crossing (0.3-0.4s accuracy)
-- ETD Model: Predicts when train rear clears crossing (0.4-0.5s accuracy)
-- 25-35% improvement over simple physics calculations
-- Achieves sub-second precision using 8-10 features from 3 sensors
-
-### 3. Simulation Module
-
-Validates system performance with two-phase traffic simulation:
-
-- Phase 1: Baseline traffic with train blockages
-- Phase 2: Alternative route without trains
-- Optimized: Calculated scenario with 70% smart rerouting
-
-Measures trip time, wait time, fuel consumption, CO2 emissions, and comfort scores with 95% confidence intervals.
-
-### 4. Hardware Implementation
-
-Arduino-based physical demonstration:
-
-- 3 PIR motion sensors for train detection
-- Servo motor for gate control
-- LED indicators for crossing and intersection status
-- TM1637 display for countdown timer
-- Buzzer for audible warnings
-
-## Key Results
-
-**Thresholds** (typical values):
-
-- Close gates: 6-8 seconds before train
-- Open gates: 3 seconds after train
-- Notify traffic: 25-30 seconds before train
-- Sensor positions: 1500m, 1000m, 800m
-
-**ML Performance**:
-
-- ETA accuracy: 0.35 ± 0.02 seconds (95% CI)
-- ETD accuracy: 0.45 ± 0.03 seconds (95% CI)
-- Cross-validation: Stable across 5 folds
-- R² scores: 0.92-0.96 (ETA), 0.88-0.93 (ETD)
-
-**Traffic Simulation** (with 70% adoption):
-
-- Trip time: 11.6% ± 1.3% improvement
-- Wait time: 64.7% ± 4.2% reduction
-- Fuel consumption: 9.0% ± 0.9% savings
-- CO2 emissions: 9.0% ± 0.9% reduction
-- Comfort score: 3.3% ± 0.4% improvement
-
-All improvements are statistically significant at 95% confidence level.
+1. **Thresholds** - Calculate safe gate timing from traffic measurements
+2. **ML** - Train models to predict train ETA/ETD
+3. **Simulation** - Test system performance with realistic traffic
+4. **Hardware** - Deploy to Arduino for physical demonstration
 
 ## Quick Start
 
 ### Prerequisites
 
-```bash
-# Install Python dependencies
-pip install pandas numpy scikit-learn matplotlib scipy pyyaml
+**Software**:
 
-# Install SUMO traffic simulator
-# Ubuntu: sudo apt-get install sumo sumo-tools
-# macOS: brew install sumo
-# Windows: https://www.eclipse.org/sumo/
+- Docker & Docker Compose
+- Python 3.8+
+- SUMO traffic simulator
 
-# Verify installation
-sumo --version
-python3 --version
-```
+**Hardware** (optional):
 
-### Run Complete Pipeline
+- Arduino Uno
+- 3x PIR sensors
+- Servo motor, LEDs, buzzer, 7-segment display
+
+### Installation
 
 ```bash
-# Build Docker environment (optional)
+# Clone repository
+git clone <repository-url>
+cd somaya
+
+# Build Docker environment
 make build
 
-# Generate thresholds from traffic data
-make th-pipeline
-
-# Train ML models
-make ml-pipeline
-
-# Run traffic simulation
-make sim-pipeline
+# Run complete pipeline
+make all
 ```
 
-### Quick Testing
+This will:
+
+1. Generate traffic thresholds (1 hour)
+2. Train ML models (10 minutes)
+3. Run simulation comparison (30 minutes)
+4. Export to Arduino headers
+
+### Quick Test
 
 ```bash
-# Fast thresholds (5 min simulation)
-make th-quick
-
-# Fast ML (50 samples)
-make ml-quick
-
-# View simulation with GUI
-make sim-gui
+make test
 ```
+
+Runs reduced versions of all modules (~5 minutes).
+
+## Usage
+
+### Complete Pipeline
+
+```bash
+make all
+```
+
+Runs entire system: thresholds → ML → simulation
+
+### Individual Modules
+
+**Thresholds** (calculate safe gate timing):
+
+```bash
+make th-pipeline    # Full: 1 hour simulation
+make th-quick       # Quick: 5 minutes
+```
+
+**ML** (train prediction models):
+
+```bash
+make ml-pipeline    # Full: 1000 samples
+make ml-quick       # Quick: 50 samples
+```
+
+**Simulation** (test system performance):
+
+```bash
+make sim-pipeline   # Headless simulation
+make sim-gui        # With visualization
+```
+
+**Hardware** (export to Arduino):
+
+```bash
+make hw-export      # Generate Arduino headers
+```
+
+## Results
+
+### Machine Learning Performance
+
+**ETA Model** (8 features):
+
+- Accuracy: 0.30-0.40s mean error
+- R² Score: 0.92-0.96
+- Improvement: 25-35% over physics
+
+**ETD Model** (10 features):
+
+- Accuracy: 0.40-0.50s mean error
+- R² Score: 0.88-0.93
+- Improvement: 20-30% over physics
+
+### Traffic Simulation Results
+
+Comparing baseline (no smart routing) vs optimized (70% adoption):
+
+| Metric    | Baseline | Optimized | Improvement |
+| --------- | -------- | --------- | ----------- |
+| Trip time | 5.9 min  | 5.2 min   | 12% faster  |
+| Wait time | 15 sec   | 5 sec     | 65% less    |
+| Fuel      | 27.1 L   | 24.7 L    | 9% saved    |
+| CO2       | 62.6 kg  | 57.0 kg   | 9% saved    |
+
+**System-wide savings** (485 vehicles):
+
+- 1,188 liters fuel saved
+- 2,745 kg CO2 reduced
+- 334 vehicle-minutes saved
 
 ## Project Structure
 
 ```
-level-crossing-project/
-├── thresholds/          # Safety parameter calculation
-│   ├── network.py       # SUMO network generator
-│   ├── collector.py     # Traffic data collection
-│   ├── analyzer.py      # Threshold calculation
-│   └── config.yaml      # Safety margins, duration
-├── ml/                  # Machine learning models
+.
+├── docker/              # Docker configuration
+├── hardware/            # Arduino code and exporters
+│   ├── exporters/       # Python → C converters
+│   ├── sketch.ino       # Main Arduino program
+│   └── diagram.json     # Circuit layout
+├── ml/                  # Machine learning module
 │   ├── data.py          # Training data generation
-│   ├── model.py         # Model training/evaluation
-│   ├── network.py       # SUMO network for ML
-│   └── config.yaml      # Sensors, hyperparameters
-├── simulation/          # Traffic simulation
-│   ├── network.py       # Road network with crossings
+│   ├── model.py         # Model training
+│   └── network.py       # SUMO network generator
+├── simulation/          # Traffic simulation module
 │   ├── controller.py    # Simulation controller
-│   ├── data.py          # Vehicle tracking
 │   ├── metrics.py       # Performance metrics
-│   └── config.yaml      # Traffic, fuel, routing
-├── hardware/            # Arduino implementation
-│   ├── sketch.ino       # Main Arduino code
-│   ├── exporters/       # Model/threshold exporters
-│   └── diagram.json     # Wokwi circuit diagram
-├── outputs/             # Generated results
-│   ├── data/            # Raw CSV data
+│   └── network.py       # Network generator
+├── thresholds/          # Safety threshold calculation
+│   ├── collector.py     # Data collection
+│   ├── analyzer.py      # Threshold calculation
+│   └── network.py       # Network generator
+├── utils/               # Shared utilities
+│   └── logger.py        # Clean logging
+├── outputs/             # Generated data and results
+│   ├── data/            # CSV data files
 │   ├── models/          # Trained ML models
 │   ├── plots/           # Visualizations
 │   └── results/         # JSON metrics
-└── Makefile            # Build automation
+├── Makefile             # Build automation
+└── README.md            # This file
 ```
 
 ## Module Details
 
-### Thresholds Module
+### 1. Thresholds Module
 
-**Purpose**: Calculate safe, location-specific control parameters
-
-**Process**:
-
-1. Simulate 1 hour of realistic traffic (600 vehicles)
-2. Measure vehicle clearance times (95th percentile: 4-5s)
-3. Measure intersection-to-crossing travel times (95th percentile: 18s)
-4. Add safety margins (2s for closure, 3s for opening)
-5. Calculate sensor positions based on max train speed
-6. Validate sensor ordering (S0 >= S1 >= S2)
-
-**Output**: YAML/JSON files with thresholds, Arduino C header
-
-### ML Module
-
-**Purpose**: Train models to predict train arrival/departure
+**Purpose**: Calculate safe gate timing from real traffic measurements
 
 **Process**:
 
-1. Generate 1000 synthetic train trajectories
-2. Extract 8-10 features from 3 sensor readings
-3. Train Gradient Boosting models (200 trees, depth 4)
-4. Validate with 5-fold cross-validation
-5. Export compressed models for Arduino
+1. Simulate realistic traffic (1 hour)
+2. Measure vehicle clearance times
+3. Calculate 95th percentile + safety margins
+4. Determine sensor positions
 
-**Output**: Pickle models, comprehensive evaluation plots, JSON metrics
+**Output**: `outputs/results/thresholds.yaml`
 
-### Simulation Module
+**Documentation**: `thresholds/README.md`
 
-**Purpose**: Measure system-wide traffic benefits
+### 2. ML Module
+
+**Purpose**: Train models to predict train arrival/departure times
+
+**Process**:
+
+1. Generate 1000 train trajectories in SUMO
+2. Extract features from 3 sensor readings
+3. Train Gradient Boosting models (200 trees)
+4. Evaluate with 95% confidence intervals
+
+**Output**:
+
+- `outputs/models/eta_model.pkl`
+- `outputs/models/etd_model.pkl`
+
+**Documentation**: `ml/README.md`
+
+### 3. Simulation Module
+
+**Purpose**: Validate system benefits with realistic traffic
 
 **Process**:
 
 1. Phase 1: All traffic uses west crossing (with trains)
 2. Phase 2: All traffic uses east crossing (no trains)
-3. Calculate optimized scenario (70% reroute when train detected)
-4. Compare metrics with 95% confidence intervals
+3. Calculate optimized scenario (70% smart routing)
+4. Compare metrics
 
-**Output**: Per-vehicle CSV data, scenario comparison JSON
+**Output**: `outputs/results/comparison.json`
 
-### Hardware Module
+**Documentation**: `simulation/README.md`
 
-**Purpose**: Physical demonstration of crossing control
+### 4. Hardware Module
 
-**Features**:
+**Purpose**: Deploy to Arduino for physical demonstration
 
-- Real-time train detection with 3 PIR sensors
-- ML-based ETA/ETD prediction (compressed models)
-- Automated gate control with servo motor
-- Visual/audio warnings (LEDs, buzzer)
-- Countdown display (TM1637 7-segment)
+**Physical Setup**:
 
-**Platform**: Arduino Uno, Wokwi simulator compatible
+- Tabletop model (~60cm)
+- 3 sensors (10cm spacing)
+- Servo gate, LEDs, buzzer, display
+- Hand-moved toy train
 
-## Scientific Rigor
+**Process**:
 
-**Statistical Methods**:
+1. Export thresholds → `hardware/thresholds.h`
+2. Export ML models → `hardware/eta_model.h`
+3. Generate config → `hardware/crossing_config.h`
+4. Upload `sketch.ino` to Arduino
+
+**Documentation**: `hardware/README.md`
+
+## Key Features
+
+### Statistical Rigor
 
 - 95% confidence intervals on all metrics
-- 5-fold cross-validation for ML models
-- Error propagation for calculated scenarios
-- t-distribution for small samples
-- Non-overlapping CIs prove significance
+- 5-fold cross-validation
+- Error propagation in calculations
+- Non-overlapping intervals prove significance
 
-**Reproducibility**:
+### Real-World Applicability
 
-- All random seeds fixed (seed=42)
-- Complete hyperparameter documentation
-- Automated pipeline via Makefile
-- Version-controlled configurations
+- Handles varied train speeds (25-39 m/s)
+- Accounts for acceleration/deceleration
+- Conservative safety margins
+- Location-specific optimization
 
-**Validation**:
+### Complete Pipeline
 
-- ML models tested on held-out data (20%)
-- Simulation runs for 30 minutes (1800s)
-- Thresholds based on 400+ vehicle samples
-- Multiple evaluation metrics per experiment
+- Simulation → Training → Testing → Deployment
+- Reproducible with random seeds
+- Documented assumptions and limitations
+- Validation at each stage
 
-## Performance Benchmarks
+## Configuration
 
-**Computation Time**:
+### Thresholds Configuration
 
-- Thresholds: 10-15 minutes (1 hour simulation)
-- ML training: 8-12 minutes (1000 samples)
-- Simulation: 5-8 minutes per phase
+Edit `thresholds/config.yaml`:
 
-**Memory Usage**:
+```yaml
+data_collection:
+  duration: 3600 # Simulation time (seconds)
 
-- Peak: ~2GB RAM during training
-- Models: <100KB compressed for Arduino
-- Data: ~50MB for complete pipeline
+safety:
+  margin_close: 2.0 # Extra time before closing
+  margin_open: 3.0 # Wait time after train
+  driver_reaction: 2.5 # Driver reaction time
+```
 
-**Accuracy**:
+### ML Configuration
 
-- Thresholds: Conservative (95th percentile + margins)
-- ML: Sub-second precision on test data
-- Simulation: Error margins <5% on all metrics
+Edit `ml/config.yaml`:
 
-## Real-World Applications
+```yaml
+training:
+  n_samples: 1000 # Number of trains
+  random_seed: 42 # Reproducibility
 
-**Direct Implementation**:
+sensors:
+  s0: 1500 # Sensor positions (meters)
+  s1: 1000
+  s2: 800
+```
 
-- Smart traffic signal coordination
-- Dynamic route guidance apps
-- Railroad crossing safety systems
-- Emergency vehicle preemption
+### Simulation Configuration
 
-**Research Extensions**:
+Edit `simulation/config.yaml`:
 
-- Multi-crossing networks
-- Probabilistic arrival predictions
-- Adaptive safety margins
-- Integration with V2X communication
+```yaml
+traffic:
+  cars_per_hour: 1200 # Traffic density
+
+routing:
+  adoption_rate: 0.70 # Smart routing adoption
+```
+
+## Outputs
+
+### Data Files
+
+```
+outputs/data/
+├── clearances.csv           # Vehicle crossing times
+├── travels.csv              # Traffic light to crossing
+├── raw_trajectories.csv     # Train simulation data
+├── features.csv             # ML training features
+├── phase1_vehicles.csv      # Baseline vehicle data
+└── phase2_vehicles.csv      # Alternative route data
+```
+
+### Models
+
+```
+outputs/models/
+├── eta_model.pkl            # ETA prediction model
+└── etd_model.pkl            # ETD prediction model
+```
+
+### Visualizations
+
+```
+outputs/plots/
+├── thresholds_analysis.png      # 6-panel threshold plots
+├── train_trajectories.png       # Sample train paths
+├── feature_distributions.png    # ML input data
+├── eta_comprehensive.png        # 9-panel ETA evaluation
+├── etd_comprehensive.png        # 9-panel ETD evaluation
+└── physics_comparison.png       # Baseline comparison
+```
+
+### Results
+
+```
+outputs/results/
+├── thresholds.yaml              # Calculated thresholds
+├── evaluation_results.json      # ML performance
+└── comparison.json              # Simulation comparison
+```
+
+### Hardware
+
+```
+hardware/
+├── thresholds.h                 # Generated sensor config
+├── eta_model.h                  # Generated prediction code
+└── crossing_config.h            # Generated helpers
+```
+
+## Docker Environment
+
+### Build and Run
+
+```bash
+make build      # Build Docker image
+make up         # Start container
+make down       # Stop container
+make shell      # Open shell in container
+```
+
+### Manual Commands
+
+```bash
+# Inside container
+python -m thresholds.collector --duration 300
+python -m ml.data --samples 100
+python -m simulation.controller --gui
+```
+
+## Troubleshooting
+
+### SUMO Not Found
+
+**Problem**: "sumo: command not found"
+
+**Fix**:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install sumo sumo-tools
+
+# macOS
+brew install sumo
+
+# Or use Docker
+make build
+```
+
+### Memory Issues
+
+**Problem**: "MemoryError" during ML training
+
+**Fix**: Reduce sample count
+
+```bash
+make ml-quick  # Uses 50 samples instead of 1000
+```
+
+### Network Generation Fails
+
+**Problem**: "Network generation failed"
+
+**Fix**: Check netconvert installation
+
+```bash
+netconvert --version  # Should show SUMO version
+```
+
+### Arduino Upload Fails
+
+**Problem**: Headers not found
+
+**Fix**: Generate headers first
+
+```bash
+make hw-export
+```
+
+## Development
+
+### Running Tests
+
+```bash
+make test           # Quick test all modules
+make th-quick       # Test thresholds
+make ml-quick       # Test ML
+make sim-network    # Test simulation
+```
+
+### Cleaning
+
+```bash
+make clean          # Clean all generated files
+make th-clean       # Clean thresholds only
+make ml-clean       # Clean ML only
+make sim-clean      # Clean simulation only
+```
 
 ## Limitations
 
-**Current System**:
+**Assumptions**:
 
-- Simulated data (not real-world validated)
-- Simplified traffic patterns
-- Single train type in simulation
-- No adverse weather conditions
-- Assumes perfect sensor reliability
+- Perfect train detection (no missed sensors)
+- Known train schedule
+- Uniform vehicle behavior
+- No weather effects
+- Single origin-destination pair
 
-**Hardware Constraints**:
+**Physical Demo Constraints**:
 
-- Arduino Uno: 32KB flash, 2KB RAM
-- Compressed models only (50 trees max)
-- Integer-only calculations
-- No floating-point on hardware
+- Hand movement variability
+- Very short timing (~0.2-2 seconds)
+- No physics (momentum, inertia)
+- Scaled distances (1:10,000)
 
 ## Future Work
 
-- Real-world data collection and validation
-- Multi-train scenarios
-- Weather-dependent adjustments
-- Pedestrian and cyclist detection
-- Integration with existing railroad systems
-- Mobile app for driver notifications
-- Cost-benefit analysis
+**Enhanced Models**:
+
+- Deep learning for better accuracy
+- Multi-crossing networks
+- Emergency vehicle priority
+- Pedestrian integration
+
+**Real Deployment**:
+
+- Field testing with real sensors
+- Integration with existing systems
+- Multi-train coordination
+- Weather-adaptive thresholds
+
+## Citation
+
+If you use this project in your research or education, please cite:
+
+```
+Smart Railway Crossing Control System
+Authors: [Your Names]
+Institution: [Your School]
+Year: 2024
+```
 
 ## License
 
-MIT License - see LICENSE file for details
+[Your License Here]
 
-## Authors
+## Contact
 
-Zahraa Selim - Complete system design and implementation
+For questions or support:
+
+- [Your Email]
+- [Your GitHub]
 
 ## Acknowledgments
 
-- SUMO Traffic Simulator (Eclipse Foundation)
-- scikit-learn Machine Learning Library
-- Arduino Platform and Community
-- Wokwi Online Circuit Simulator
+- SUMO traffic simulator
+- scikit-learn ML library
+- Arduino community
+- [Your School/Advisors]
+
+---
+
+**Project Status**: Complete and tested
+
+**Last Updated**: 2024
+
+**Version**: 1.0

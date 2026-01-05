@@ -1,315 +1,314 @@
-# Hardware Implementation: Arduino Railroad Crossing
+# Hardware Module
 
-Physical demonstration of the intelligent crossing control system using Arduino Uno.
+Exports trained ML models and thresholds to Arduino C code for physical deployment.
 
-## Overview
+## What It Does
 
-This hardware implementation demonstrates real-time train detection, ML-based prediction, and automated crossing control. The system uses compressed decision tree models that fit within Arduino Uno's 32KB flash memory.
+Converts Python-trained models to C headers that Arduino can use to run the railway crossing system on physical hardware.
 
-## Components
+## Physical Setup
 
-**Required Hardware**:
-
-- Arduino Uno (or compatible)
-- 3x PIR motion sensors (train detection)
-- 1x Servo motor SG90 (gate control)
-- 4x LEDs (2 red, 2 green)
-- 1x Active buzzer (5V)
-- 1x TM1637 4-digit 7-segment display
-- 5x 220Ω resistors (LED current limiting)
-- 1x 100Ω resistor (buzzer current limiting)
-- Breadboard and jumper wires
-
-**Pin Connections**:
+### Layout
 
 ```
-Sensors:
-  Sensor 0 (farthest) → Pin 2
-  Sensor 1 (middle)   → Pin 3
-  Sensor 2 (closest)  → Pin 4
-
-Gate Control:
-  Servo PWM           → Pin 5
-
-Crossing Signals:
-  Green LED           → Pin 6
-  Red LED             → Pin 7
-
-Intersection Signals:
-  Green LED           → Pin 8
-  Red LED             → Pin 9
-
-Alerts:
-  Buzzer              → Pin 10
-  TM1637 CLK          → Pin 11
-  TM1637 DIO          → Pin 12
+[S0] --10cm-- [S1] --10cm-- [S2] --20cm-- [Crossing] --20cm-- [Intersection]
+                                              ⊥
+                                        (perpendicular)
 ```
 
-## System Operation
+**Total**: ~60cm tabletop model
 
-**State Machine**:
+### Components
 
-1. IDLE: System ready, gates open, all green
-2. TRAIN_DETECTED: Sensor triggered, collecting data
-3. INTERSECTION_NOTIFIED: Upstream signal red, buzzer on
-4. GATES_CLOSED: Crossing closed, countdown active
-5. GATES_OPENING: Train cleared, reopening
+**Sensors**: 3x PIR Motion Sensors
 
-**Detection Sequence**:
+- S0: 40cm from crossing (furthest)
+- S1: 30cm from crossing (middle)
+- S2: 20cm from crossing (nearest)
 
-1. Train passes Sensor 0 (20cm from crossing)
-2. Train passes Sensor 1 (15cm from crossing)
-3. Train passes Sensor 2 (10cm from crossing)
-4. System calculates speed and acceleration
-5. ML models predict ETA and ETD
+**Outputs**:
 
-**Control Timeline**:
+- 1x Servo motor (gate control)
+- 1x TM1637 7-segment display (countdown)
+- 2x Red LEDs (crossing signals)
+- 2x Green LEDs (intersection signals)
+- 1x Buzzer (warning sound)
+
+**Controller**: Arduino Uno
+
+**Movement**: Hand-moved toy train/cars
+
+## How It Works
+
+### Detection & Prediction
+
+1. Train triggers S0, S1, S2 sequentially
+2. Arduino calculates speed and acceleration from timing
+3. Predicts ETA (time until arrival) and ETD (time until cleared)
+4. **Display shows ETA countdown** (time until gate closes)
+
+### Gate Closing
+
+5. When ETA reaches close threshold:
+   - Gate servo closes
+   - Crossing green LED → OFF
+   - Crossing red LED → ON
+   - **Display switches to ETD countdown** (time until gate opens)
+
+### Intersection Warning
+
+6. When notification threshold reached:
+   - Intersection green LED → OFF
+   - Intersection red LED → ON
+   - Buzzer starts beeping
+
+### Gate Opening
+
+7. When ETD countdown reaches 0:
+   - Gate servo opens
+   - Crossing red LED → OFF, green LED → ON
+   - Intersection red LED → OFF, green LED → ON
+   - Buzzer stops
+   - System resets for next train
+
+## System Behavior
 
 ```
-T-3.0s: Intersection notified (red light, buzzer)
-T-2.0s: Gates close
-T+0.0s: Train arrives at crossing
-T+X.Xs: Train rear clears crossing
-T+1.0s: Gates open, system reset
+Train at S0 → Calculate ETA/ETD
+  ↓
+Display shows: "00:03" (ETA countdown - time until gate closes)
+  ↓
+Notification time → Intersection red + buzzer starts
+  ↓
+Gate close time → Servo closes, crossing turns red
+  ↓
+Display switches to: "00:05" (ETD countdown - time until gate opens)
+  ↓
+ETD reaches 0 → Gate opens, all green, buzzer stops, reset
 ```
 
-## Machine Learning Models
+## Usage
 
-**Compressed Decision Trees**:
+### 1. Export to Arduino
 
-- 50 trees maximum (Arduino flash constraint)
-- Integer-only arithmetic (no floating-point)
-- Fixed-point scaling (multiply by 1000)
-- Depth limited to 5 levels
-
-**Features Used** (8 for ETA, 10 for ETD):
-
-```
-distance_remaining    - Distance from last sensor
-train_length          - Train length (fixed 10cm)
-last_speed            - Speed at sensor 2
-speed_change          - Acceleration trend
-time_01, time_12      - Transit times
-avg_speed_01/12       - Average speeds
-accel_trend           - Recent acceleration (ETD only)
-predicted_speed       - Extrapolated speed (ETD only)
+```bash
+make hw-export
 ```
 
-**Performance**:
+Generates:
 
-- ETA accuracy: 0.3-0.4 seconds
-- ETD accuracy: 0.4-0.5 seconds
-- Prediction time: <50ms on Arduino
+- `hardware/thresholds.h` - Sensor positions and timing
+- `hardware/eta_model.h` - ETA/ETD prediction functions
+- `hardware/crossing_config.h` - Helper functions
+
+### 2. Upload to Arduino
+
+**Using Arduino IDE**:
+
+1. Open `hardware/sketch.ino`
+2. Verify compilation
+3. Upload to Arduino Uno
+
+**Using CLI**:
+
+```bash
+arduino-cli compile --fqbn arduino:avr:uno hardware/
+arduino-cli upload -p /dev/ttyUSB0 --fqbn arduino:avr:uno hardware/
+```
+
+### 3. Test with Serial Monitor
+
+Open Serial Monitor at 9600 baud:
+
+```
+[00:00] Level Crossing System Ready
+[00:00] Sensors at: S0=0.40m, S1=0.30m, S2=0.20m
+[00:00] Gate close: 6.8s, Notify: 27.5s
+```
+
+Move toy train across sensors and observe the sequence.
+
+## Files
+
+### Generated Headers
+
+- `thresholds.h` - Physical scale sensor positions and timing
+- `eta_model.h` - ETA/ETD prediction functions (physics-based)
+- `crossing_config.h` - Helper functions and constants
+
+### Arduino Code
+
+- `sketch.ino` - Main program (uses generated headers)
+- `diagram.json` - Wokwi circuit layout
+- `libraries.txt` - Dependencies (Servo, TM1637)
+
+### Exporters (Python)
+
+- `exporters/threshold.py` - Generates thresholds.h
+- `exporters/model.py` - Generates eta_model.h
+- `exporters/config.py` - Generates crossing_config.h
+
+## Outputs
+
+After `make hw-export`:
+
+```
+hardware/
+├── thresholds.h           ← Sensor positions (0.4m, 0.3m, 0.2m)
+├── eta_model.h            ← ETA/ETD prediction functions
+├── crossing_config.h      ← Helper functions
+├── sketch.ino             ← Main Arduino program
+└── exporters/
+    ├── threshold.py
+    ├── model.py
+    └── config.py
+```
+
+## Example Serial Output
+
+```
+[00:05] [SENSOR 0] Train detected (furthest)
+[00:06] [SENSOR 1] Train detected (middle)
+[00:06] [TIMING] S0->S1: 0.850s
+[00:07] [SENSOR 2] Train detected (nearest)
+[00:07] [TIMING] S1->S2: 0.920s
+[00:07] [CALCULATING] Computing ETA and ETD...
+[00:07] [PREDICTION] ETA: 3.2s, ETD: 5.1s
+[00:07] [INFO] Train speed: 23.5 km/h, Accel: -0.023 m/s^2
+[00:10] [NOTIFICATION] Intersection alerted - Red light + Buzzer
+[00:11] [GATE] CLOSED - Crossing red, now showing ETD countdown
+[00:17] [GATE] OPENED - All clear, buzzer stopped
+[00:17] [SYSTEM] Reset - Ready for next train
+```
+
+## Physical Constraints
+
+### Arduino Uno Limits
+
+- **Flash**: 32KB program storage
+- **RAM**: 2KB runtime memory
+- **Full ML model**: ~120KB (won't fit!)
+
+### Solution: Physics Fallback
+
+Uses simplified physics calculations:
+
+```cpp
+ETA = distance / speed
+ETD = (distance + train_length) / speed
+```
+
+**Accuracy**: ~0.5s (vs ~0.35s for full ML)
+
+**For full ML**: Use Arduino Mega (256KB) or ESP32 (4MB)
 
 ## Configuration
 
-**Physical Scale**:
+### Timing Adjustments
 
-- Sensor spacing: 5cm between sensors
-- Crossing distance: 20cm from sensor 0
-- Train length: 10cm (adjustable)
-- Speed range: 5-30 cm/s
+Edit `hardware/thresholds.h` (or regenerate):
 
-**Timing Thresholds**:
-
-```c
-#define CLOSURE_THRESHOLD 2.0f       // Close gates 2s before arrival
-#define OPENING_THRESHOLD 1.0f       // Open gates 1s after departure
-#define NOTIFICATION_THRESHOLD 3.0f  // Alert intersection 3s before
+```cpp
+#define GATE_CLOSE_THRESHOLD 6.80f    // Seconds before train
+#define NOTIFICATION_THRESHOLD 27.50f  // Seconds warning
+#define GATE_OPEN_DELAY 3.00f          // Seconds after train
 ```
 
-**Sensor Positions**:
+### Display/Buzzer
 
-```c
-#define SENSOR_0_POS 20.0f  // 20cm from crossing (farthest)
-#define SENSOR_1_POS 15.0f  // 15cm from crossing (middle)
-#define SENSOR_2_POS 10.0f  // 10cm from crossing (closest)
+Edit `hardware/crossing_config.h`:
+
+```cpp
+#define BUZZER_INTERVAL 500            // Beep interval (ms)
+#define DISPLAY_BRIGHTNESS 0x0f        // 0-15
 ```
-
-## Code Structure
-
-**Main Files**:
-
-- `sketch.ino` - Main control logic
-- `train_models.h` - Compressed ML models
-- `thresholds_config.h` - Timing parameters
-- `scale_config.h` - Physical dimensions
-
-**Key Functions**:
-
-```c
-checkSensors()          - Monitor PIR sensors
-calculatePredictions()  - Run ML models
-notifyIntersections()   - Alert upstream traffic
-closeGates()           - Lower crossing gates
-openGates()            - Raise crossing gates
-updateCountdown()      - Display time remaining
-updateBuzzer()         - Control warning sound
-```
-
-## Generating Model Headers
-
-**Export from trained models**:
-
-```bash
-# Train ML models first
-make ml-pipeline
-
-# Export compressed models for Arduino
-python -m hardware.exporters.model
-```
-
-**Output files**:
-
-- `hardware/eta_model.h` - ETA prediction model
-- `hardware/etd_model.h` - ETD prediction model
-- `hardware/thresholds.h` - Timing configuration
-
-**Model format**:
-
-```c
-// Example tree structure
-const int8_t eta_tree_0_features[] = {2, 7, -1, -1};
-const int16_t eta_tree_0_thresholds[] = {15000, 12000, 0, 0};
-const int8_t eta_tree_0_children_left[] = {1, 2, -1, -1};
-const int8_t eta_tree_0_children_right[] = {3, 4, -1, -1};
-const int16_t eta_tree_0_values[] = {0, 0, 2500, 1800};
-```
-
-## Testing
-
-**Wokwi Simulator**:
-
-1. Open `diagram.json` in Wokwi
-2. Upload `sketch.ino`
-3. Run simulation
-4. Trigger sensors sequentially to simulate train
-
-**Physical Setup**:
-
-1. Wire components per diagram
-2. Upload sketch to Arduino
-3. Open Serial Monitor (9600 baud)
-4. Pass object past sensors to test
-
-**Expected Output**:
-
-```
-[00:00] Demonstration Level Crossing System
-[00:00] Scale: 5cm between sensors, 20cm to crossing
-[00:00] Ready - waiting for train detection
-[00:05] Sensor 0 triggered (20cm from crossing)
-[00:06] Sensor 1 triggered (15cm from crossing)
-[00:07] Sensor 2 triggered (10cm from crossing)
-[00:07] Train parameters calculated:
-[00:07]   Speed: 10.00 cm/s
-[00:07]   Acceleration: 0.00 cm/s²
-[00:07]   ETA: 2.1s
-[00:07]   ETD: 3.2s
-[00:10] INTERSECTION NOTIFIED - Buzzer activated
-[00:10]   Time to gate closure: 0.1s
-[00:10] GATES CLOSED
-[00:10]   Wait time: 4.2s
-[00:14] GATES OPEN - System ready
-[00:14] System reset - Ready for next train
-```
-
-## Limitations
-
-**Hardware Constraints**:
-
-- Arduino Uno: 32KB flash, 2KB RAM
-- No floating-point hardware
-- Model compression required
-- Integer math only
-
-**Timing Accuracy**:
-
-- PIR sensor latency: ~100ms
-- Servo response time: ~200ms
-- Prediction overhead: ~50ms
-- Total system latency: ~350ms
-
-**Physical Constraints**:
-
-- PIR detection range: 3-7 meters
-- Requires moving heat source (person, warm object)
-- Indoor use only (PIR affected by sunlight)
-- Small scale demonstration only
-
-## Scaling to Real System
-
-**Full-Scale Implementation**:
-
-- Replace PIR with magnetic/inductive sensors
-- Use industrial servo or barrier motor
-- Add redundant sensors for safety
-- Implement fail-safe mechanisms
-- Scale distances proportionally (50:1 ratio)
-
-**Example Scaling**:
-
-```
-Demo:    Real System:
-10cm  →  5m train length
-20cm  →  10m to crossing
-5cm   →  2.5m between sensors
-10cm/s → 5m/s (18 km/h)
-```
-
-## Safety Notes
-
-**Important**:
-
-- This is a demonstration system only
-- Not certified for actual railroad use
-- No safety guarantees provided
-- PIR sensors not suitable for critical applications
-- Always include fail-safe mechanisms in real systems
 
 ## Troubleshooting
 
-**Sensors not triggering**:
+### Headers Not Found
 
-- Check PIR sensor power (5V)
-- Verify sensor sensitivity adjustment
-- Test with warm object (hand)
-- Check sensor orientation
+**Problem**: "thresholds.h: No such file"
 
-**Incorrect predictions**:
+**Fix**:
 
-- Verify sensor spacing (exactly 5cm)
-- Check timing calculation (millis() overflow)
-- Ensure train moves at constant speed
-- Regenerate models if scale changed
+```bash
+make hw-export  # Generate all headers
+```
 
-**Servo not moving**:
+### Wrong Sensor Positions
 
-- Check servo power (5V)
-- Verify PWM connection (pin 5)
-- Test servo separately
-- Check for physical obstruction
+**Problem**: Sensors don't match physical layout
 
-**Display not working**:
+**Fix**: Run thresholds pipeline first:
 
-- Verify TM1637 connections
-- Check CLK/DIO pins (11, 12)
-- Test display brightness setting
-- Ensure common ground
+```bash
+make th-pipeline  # Generate correct thresholds
+make hw-export    # Export to Arduino
+```
 
-## References
+Or manually edit `hardware/thresholds.h`
 
-**Libraries Used**:
+### Servo Not Moving
 
-- Servo.h (built-in Arduino library)
-- TM1637Display.h (open source)
+**Causes**:
 
-**Model Training**:
+- Insufficient power (servos need ≥500mA)
+- Wrong pin (should be pin 5)
+- No Servo library
 
-- scikit-learn GradientBoostingRegressor
-- Custom compression for embedded systems
-- See `ml/` directory for training code
+**Fix**: Use external 5V power supply for servo
 
-## License
+### Very Fast Timing
 
-MIT License - Educational and research use
+With 10cm spacing at 0.5 m/s hand speed:
+
+- Time between sensors: ~0.2s
+- ETA: ~0.5-1.0s
+- ETD: ~1.0-2.0s
+
+**Solutions**:
+
+1. Move hand slower (~0.2 m/s)
+2. Use motor for consistent speed
+3. Increase sensor spacing
+
+## Demo Tips
+
+### Hand Movement
+
+- Speed: Slow walk pace (~0.5 m/s)
+- Smooth: Maintain steady speed
+- Visible: Don't block sensors with hand
+
+### For Better Visibility
+
+- Move slower for longer countdowns
+- Announce stages: "Train detected", "Gate closing", etc.
+- Point to LEDs as they change
+
+## Scale Comparison
+
+| Aspect         | Physical Demo | SUMO Simulation |
+| -------------- | ------------- | --------------- |
+| Distance       | 60cm          | 4000m           |
+| Sensor spacing | 10cm          | 500m            |
+| Speed          | 0.5 m/s       | 30 m/s          |
+| Timing         | ~1-2s         | ~10-30s         |
+| Purpose        | Show logic    | Test accuracy   |
+
+## Summary
+
+**Purpose**: Physical demonstration of railway crossing control
+
+**Method**: Export Python models → Arduino C code
+
+**Features**:
+
+- Real ETA/ETD calculation from sensors
+- Two countdowns (before/after gate close)
+- Proper LED control (green ↔ red)
+- Buzzer warning (notification → clear)
+
+**Result**: Working tabletop demonstration system
+
+Perfect for science fairs, school projects, or embedded systems education!

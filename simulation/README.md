@@ -1,327 +1,230 @@
-# Simulation Module: Traffic Performance Analysis
+# Simulation Module
 
-Measures system-wide benefits of intelligent railroad crossing control through two-phase traffic simulation with statistical rigor.
+Tests whether smart routing actually improves traffic flow using real SUMO traffic simulation.
 
-## Overview
+## The Question
 
-The simulation validates that smart routing with real-time train information improves traffic flow, reduces fuel consumption, and enhances driver comfort. All measurements include 95% confidence intervals to ensure statistical significance.
+If drivers get real-time train information, would it help reduce:
 
-## Methodology
+- Trip times?
+- Waiting at crossings?
+- Fuel consumption?
+- CO2 emissions?
 
-### Two-Phase Simulation
+## The Experiment
+
+### Two-Phase Test
 
 **Phase 1: Baseline (West Route)**
 
-- All 600 vehicles use west crossing
-- Train blocks crossing for 90s every 240s
-- Measures real-world impact of delays
-- Duration: 1800 seconds (30 minutes)
+- All 485 vehicles use west crossing
+- Trains block crossing for 90 seconds every 240 seconds
+- Measures real-world delays
+- Duration: 30 minutes
 
 **Phase 2: Alternative (East Route)**
 
-- All 600 vehicles use east crossing
-- No train interference
-- Establishes optimal travel time
-- Duration: 1800 seconds (30 minutes)
+- All 485 vehicles use east crossing
+- No trains at east crossing
+- Shows best-case scenario
+- Duration: 30 minutes
 
-**Optimized Scenario: Calculated**
+**Optimized: Calculated**
 
-- Combines Phase 1 and Phase 2 data
-- 70% of affected drivers reroute (adoption rate)
-- 30% continue to west crossing
-- Error propagation from both phases
+- Mix Phase 1 and Phase 2 data
+- Assumes 70% of affected drivers reroute
+- 30% don't have app, still wait
+- Estimates real-world performance
 
-### Network Configuration
+### Network Layout
 
 ```
-Layout:
-  2000m ←→ West Crossing ←→ 300m ←→ East Crossing ←→ 2000m
-           (with trains)              (no trains)
-
-Traffic:
-  1200 vehicles/hour (600 per direction)
-  Speed: 16.67 m/s (60 km/h)
-
-Trains:
-  Interval: 240 seconds
-  Duration: 90 seconds blockage
-  Frequency: 37.5% of time blocked
+<-- 2000m --> West Crossing <-- 300m --> East Crossing <-- 2000m -->
+              (with trains)              (no trains)
 ```
 
-## Metrics
+**Traffic**: 1200 vehicles/hour, speed limit 60 km/h
+**Trains**: Block west crossing 90s every 240s (37.5% of time)
+
+## What We Measure
 
 ### 1. Trip Time
 
-Total time from origin to destination.
-
-**Formula**: `trip_time = arrival_time - departure_time`
+Total time from start to finish.
 
 **Results**:
 
-- Baseline: 5.90 ± 0.08 minutes
-- Optimized: 5.21 ± 0.07 minutes
-- Improvement: 0.68 minutes (11.6% ± 1.3%)
-
-**Interpretation**: Smart routing saves 41 seconds per trip on average with 95% confidence that true savings are between 36-46 seconds.
+- Baseline: 5.9 minutes
+- Optimized: 5.2 minutes
+- **Improvement: 12% faster (41 seconds saved)**
 
 ### 2. Wait Time
 
-Time spent stopped at railroad crossings.
-
-**Calculation**:
-
-- Only counts vehicles that actually stop (speed < 0.5 m/s)
-- Average across all vehicles (including those with no wait)
+Time spent stopped at crossings.
 
 **Results**:
 
-- Baseline: 15.0 ± 1.2 seconds average
-  - 94 vehicles wait (19.4%)
-  - Those waiting: 77 seconds each
-- Optimized: 5.4 ± 0.4 seconds average
-  - 29 vehicles wait (6.0%)
-- Improvement: 9.6 seconds (64.7% ± 4.2%)
-
-**Interpretation**: 69% fewer vehicles experience delays, with 95% confidence that reduction is between 60-69%.
+- Baseline: 15 seconds average
+  - 94 vehicles wait (19%)
+  - Those who wait: 77 seconds each
+- Optimized: 5 seconds average
+  - 29 vehicles wait (6%)
+- **Improvement: 65% less waiting**
 
 ### 3. Fuel Consumption
 
-Fuel used per vehicle during trip.
+Fuel used per vehicle.
 
-**Formula**:
+Calculation:
 
-```
-fuel = (driving_time × 0.08 L/s) + (idling_time × 0.01 L/s)
-```
-
-Where:
-
-- Driving fuel: 0.08 L/s while moving
-- Idling fuel: 0.01 L/s while stopped
-- Engine-off: 0.0 L/s (after 5s wait)
+- Driving: 0.08 liters/second
+- Idling: 0.01 liters/second
+- Engine off: 0.00 liters/second (after 5s wait)
 
 **Results**:
 
-- Baseline: 27.113 ± 0.245 L per vehicle
-- Optimized: 24.663 ± 0.221 L per vehicle
-- Improvement: 2.45 L per vehicle (9.0% ± 0.9%)
-- System total: 1,188 liters saved (485 vehicles)
+- Baseline: 27.1 liters per vehicle
+- Optimized: 24.7 liters per vehicle
+- **Improvement: 2.5 liters saved (9%)**
 
-**Interpretation**: Each vehicle saves nearly 2.5 liters with 95% confidence between 2.2-2.7 liters.
+System total: 1,188 liters saved for 485 vehicles
 
 ### 4. CO2 Emissions
 
-Carbon dioxide produced per vehicle.
+Carbon dioxide produced.
 
-**Formula**: `CO2 = fuel_consumed × 2.31 kg/L`
+Formula: `CO2 = fuel × 2.31 kg/liter`
 
 **Results**:
 
-- Baseline: 62.631 ± 0.566 kg per vehicle
-- Optimized: 56.972 ± 0.510 kg per vehicle
-- Improvement: 5.66 kg per vehicle (9.0% ± 0.9%)
-- System total: 2,745 kg saved
+- Baseline: 62.6 kg per vehicle
+- Optimized: 57.0 kg per vehicle
+- **Improvement: 5.7 kg saved (9%)**
 
-**Interpretation**: Equivalent to removing 0.6 cars from the road for this 30-minute period.
+System total: 2,745 kg saved (equivalent to 0.6 cars removed)
 
 ### 5. Comfort Score
 
-Subjective trip quality (0-100 scale).
+Trip quality rating (0-100).
 
-**Penalty Formula**:
+Penalties:
 
-```
-comfort = 100
-  - (wait_time_min × 10)           // -10 per minute waiting
-  - (extra_trip_time_min × 2)      // -2 per minute over expected
-  - ((num_stops - 1) × 2)          // -2 per additional stop
-```
+- Waiting: -10 points per minute
+- Extra trip time: -2 points per minute over expected
+- Multiple stops: -2 points per extra stop
 
 **Results**:
 
-- Baseline: 95.9 ± 0.4 points
-  - No wait: 98.4 (80.6% of vehicles)
-  - With wait: ~85.6 (19.4% of vehicles)
-- Optimized: 99.1 ± 0.2 points
-  - Rerouted: 99.8 (13.4% of vehicles)
-  - No impact: 99.8 (80.6% of vehicles)
-  - Still waited: ~85.6 (6.0% of vehicles)
-- Improvement: 3.2 points (3.3% ± 0.4%)
+- Baseline: 95.9 points
+- Optimized: 99.1 points
+- **Improvement: 3.2 points (3%)**
 
-**Interpretation**: Most trips already comfortable at baseline, system primarily helps the 19% affected by trains.
+Most trips already comfortable, system mainly helps the 19% affected by trains.
 
-## Statistical Rigor
+## Results Summary
 
-### Confidence Intervals
+| Metric    | Baseline | Optimized | Better By |
+| --------- | -------- | --------- | --------- |
+| Trip Time | 5.9 min  | 5.2 min   | 12%       |
+| Wait Time | 15 sec   | 5 sec     | 65%       |
+| Fuel      | 27.1 L   | 24.7 L    | 9%        |
+| CO2       | 62.6 kg  | 57.0 kg   | 9%        |
+| Comfort   | 95.9/100 | 99.1/100  | 3%        |
 
-All metrics include 95% confidence intervals calculated using:
+All improvements are statistically significant with 95% confidence.
 
-**For measured data (Phase 1 & 2)**:
+## How It Works
 
-```
-margin = 1.96 × (std_dev / √n)
-```
+### Direct Benefits
 
-Where:
+**65 vehicles reroute to east crossing**:
 
-- 1.96 = z-score for 95% confidence
-- std_dev = standard deviation of measurements
-- n = sample size (typically 485 vehicles)
+- Avoid 77 second wait at west
+- Add 5 second detour to east
+- Net benefit: 72 seconds each
+- Total saved: 1.4 hours
 
-**For calculated optimized scenario**:
+### Indirect Benefits
 
-```
-margin = √[(w₁ × e₁)² + (w₂ × e₂)²]
-```
+**Reduced congestion at west crossing**:
 
-Where:
+- Smaller queues (70% reduction)
+- Better traffic flow
+- Everyone benefits slightly
 
-- w₁ = 0.806 (weight for Phase 1)
-- w₂ = 0.194 (weight for Phase 2)
-- e₁, e₂ = error margins from phases
+### Who Benefits?
 
-### Statistical Significance
-
-**Non-overlapping confidence intervals** prove improvements are real:
-
-| Metric    | Baseline Range | Optimized Range | Overlap? |
-| --------- | -------------- | --------------- | -------- |
-| Trip Time | 5.82-5.98 min  | 5.14-5.28 min   | No       |
-| Wait Time | 13.8-16.2 sec  | 5.0-5.8 sec     | No       |
-| Fuel      | 26.87-27.36 L  | 24.44-24.88 L   | No       |
-| CO2       | 62.07-63.20 kg | 56.46-57.48 kg  | No       |
-| Comfort   | 95.5-96.3 pts  | 98.9-99.3 pts   | No       |
-
-Since ranges don't overlap, we are 95% confident improvements are genuine and reproducible.
-
-### Sample Sizes
-
-**Per scenario**:
-
-- Total vehicles: 485 completed trips
-- Affected by trains: ~94 (19.4%)
-- Clear periods: ~391 (80.6%)
-
-**Adequacy**:
-
-- Standard errors: <2% of means
-- Distribution: Normal (verified with Q-Q plots)
-- Outliers: Minimal (<1% extreme values)
-
-## Vehicle Distribution
-
-### Baseline (Phase 1)
-
-All vehicles use west crossing:
-
-- Clear passage: 391 vehicles (80.6%)
-- Delayed by train: 94 vehicles (19.4%)
-- Average wait (affected): 77 seconds
-
-### Optimized Scenario
-
-Smart routing with 70% adoption:
-
-- **Rerouted to east**: 65 vehicles (13.4%)
-  - Avoid 77s wait
-  - Add 5s reroute delay
-  - Net benefit: 72s saved each
-- **Still waited at west**: 29 vehicles (6.0%)
-  - Don't have app (30%)
-  - Full 77s wait
-  - No benefit
-- **Unaffected**: 391 vehicles (80.6%)
-  - No train encountered
-  - Use west route normally
-  - No change
-
-## Files
-
-### Core Scripts
-
-**network.py**: Generates road network
-
-- Creates west and east crossings
-- Configures traffic lights and junctions
-- Defines routes and vehicle flows
-
-**controller.py**: Runs simulation phases
-
-- Phase 1: West route with trains
-- Phase 2: East route without trains
-- Controls train schedules and gate operations
-
-**data.py**: Collects vehicle data
-
-- Tracks individual vehicle positions
-- Records wait events at crossings
-- Monitors queue lengths
-
-**metrics.py**: Calculates performance metrics
-
-- Computes means and confidence intervals
-- Creates optimized scenario projection
-- Generates comparison reports
-
-**config.yaml**: Configuration
-
-- Network geometry (300m crossing separation)
-- Traffic rates (1200 vehicles/hour)
-- Fuel parameters (0.08 L/s driving, 0.01 L/s idling)
-- Routing parameters (70% adoption rate)
+- **13% of drivers**: Big benefit (reroute, save 72s)
+- **81% of drivers**: Small benefit (less congestion)
+- **6% of drivers**: No benefit (don't have app, still wait)
 
 ## Usage
 
-### Run Complete Simulation
+### Full Simulation
 
 ```bash
 make sim-pipeline
 ```
 
-Generates:
+Runs both phases, calculates optimized scenario, generates comparison (takes ~10 minutes).
 
-- `outputs/data/phase1_vehicles.csv`
-- `outputs/data/phase2_vehicles.csv`
-- `outputs/results/phase1_metrics.json`
-- `outputs/results/phase2_metrics.json`
-- `outputs/results/optimized_metrics.json`
-- `outputs/results/comparison.json`
-
-### View with GUI
+### With Visualization
 
 ```bash
 make sim-gui
 ```
 
-### Run Individual Phases
+Opens SUMO-GUI to watch traffic simulation in real-time.
+
+### Individual Phases
 
 ```bash
-python -m simulation.network
-python -m simulation.controller --phase 1
-python -m simulation.controller --phase 2
+python -m simulation.network              # Generate network
+python -m simulation.controller --phase 1  # Baseline (west)
+python -m simulation.controller --phase 2  # Alternative (east)
 ```
 
-### Custom Configuration
+### With GUI
+
+```bash
+python -m simulation.controller --phase 1 --gui
+```
+
+## Configuration
 
 Edit `simulation/config.yaml`:
 
 ```yaml
 traffic:
-  cars_per_hour: 1200
+  cars_per_hour: 1200 # Traffic density
+  train_interval: 240 # Time between trains
 
 routing:
-  adoption_rate: 0.70
+  adoption_rate: 0.70 # % who use smart routing
 
 fuel:
-  driving: 0.08
-  idling: 0.01
+  driving: 0.08 # L/s while moving
+  idling: 0.01 # L/s while stopped
+  co2_per_liter: 2.31 # kg CO2 per liter
 ```
 
-## Output Files
+## Outputs
 
-### CSV Data Files
+```
+outputs/
+├── data/
+│   ├── phase1_vehicles.csv    # Baseline vehicle data
+│   └── phase2_vehicles.csv    # Alternative vehicle data
+└── results/
+    ├── phase1_metrics.json    # Baseline statistics
+    ├── phase2_metrics.json    # Alternative statistics
+    ├── optimized_metrics.json # Smart routing calculation
+    └── comparison.json        # All comparisons
+```
 
-**phase1_vehicles.csv** / **phase2_vehicles.csv**:
+### CSV Files
+
+**phase1_vehicles.csv**:
 
 ```csv
 vehicle_id,route_choice,trip_time_seconds,wait_time_seconds,fuel_liters,co2_kg,comfort_score
@@ -331,125 +234,119 @@ car_1,west,431.5,77.3,27.512,63.553,85.6
 
 ### JSON Metrics
 
-**phase1_metrics.json**:
-
-```json
-{
-  "scenario": "phase1",
-  "total_vehicles": 485,
-  "trip_time": {
-    "average_minutes": 5.9,
-    "error_margin_minutes": 0.08
-  },
-  "wait_time": {
-    "average_seconds": 15.0,
-    "error_margin_seconds": 1.2,
-    "vehicles_with_waits": 94,
-    "percent_with_waits": 19.4
-  }
-}
-```
-
-**comparison.json**:
+**comparison.json** (key section):
 
 ```json
 {
   "improvements": {
-    "trip_time": {
-      "absolute": 41.4,
-      "percent": 11.6
-    },
-    "fuel": {
-      "absolute": 2.45,
-      "percent": 9.0
-    }
+    "trip_time": { "percent": 11.6 },
+    "wait_time": { "percent": 64.7 },
+    "fuel": { "percent": 9.0 },
+    "co2": { "percent": 9.0 }
   }
 }
 ```
 
-## Key Findings
+## Why It Works
 
-### System-Wide Impact
+**The Problem**: 19% of vehicles get stuck behind trains
 
-**For 485 vehicles over 30 minutes**:
+- Average delay: 77 seconds
+- Wastes fuel idling
+- Causes frustration
 
-- Total time saved: 334 vehicle-minutes
-- Total fuel saved: 1,188 liters
-- Total CO2 reduced: 2,745 kg
-- Vehicles helped: 65 rerouted + reduced congestion
+**The Solution**: Smart routing
 
-**Benefit Distribution**:
+- System knows train schedule
+- Suggests alternate route
+- 70% of affected drivers reroute
 
-- 13.4% of vehicles: Significant benefit (72s saved)
-- 80.6% of vehicles: Slight benefit (reduced congestion)
-- 6.0% of vehicles: No benefit (still waited)
+**The Result**: Everyone benefits
 
-### Why It Works
+- Rerouted drivers avoid wait
+- Remaining drivers face less congestion
+- System-wide improvements
 
-**Direct Benefits**:
+## Assumptions
 
-- 65 vehicles avoid waiting completely
-- Each saves 77 seconds of idling
-- Total: 5,005 seconds (1.4 hours) saved
+**Perfect Information**:
 
-**Indirect Benefits**:
+- All drivers know train location
+- Know exact arrival times
+- Make instant decisions
 
-- Reduced congestion at west crossing
-- Smoother traffic flow overall
-- Better signal coordination
-- Lower queue buildup
+**High Adoption**:
 
-### Limitations
+- 70% use the app
+- Follow suggestions immediately
+- No hesitation
 
-**Assumptions**:
+**No Congestion**:
 
-- Perfect information (all drivers know train status)
-- Instant adoption (70% immediately reroute)
-- No east route congestion (assumes capacity)
-- Deterministic train schedule
-- No emergency vehicles
+- East route has unlimited capacity
+- No new bottlenecks created
+- Reroute only takes 5 extra seconds
 
-**Simplifications**:
+**Reality Check**: Real world would be messier
 
-- Fixed reroute delay (5 seconds)
-- Uniform vehicle types
-- No weather effects
-- No driver heterogeneity
-- Single origin-destination pair
+- Lower adoption (maybe 40-50%)
+- Some delays in decision making
+- Potential east route congestion
+- But still beneficial overall!
 
-## Future Extensions
+## Troubleshooting
 
-**Sensitivity Analysis**:
+### Network Files Missing
 
-- Test 50%, 70%, 85%, 95% adoption rates
-- Vary train frequency (120s, 180s, 240s)
-- Change blockage duration (60s, 90s, 120s)
-- Multiple origin-destination pairs
+**Problem**: "File not found: simulation.net.xml"
 
-**Advanced Scenarios**:
+**Fix**:
 
-- East route congestion modeling
-- Multi-crossing networks
-- Peak vs off-peak traffic
-- Emergency vehicle priority
-- Pedestrian interactions
+```bash
+python -m simulation.network
+```
 
-**Validation**:
+### SUMO Not Found
 
-- Real-world data comparison
-- Driver behavior surveys
-- Field deployment pilot
-- Cost-benefit analysis
+**Problem**: "sumo: command not found"
 
-## Summary
+**Install**:
 
-The simulation demonstrates that intelligent routing with real-time train information produces measurable, statistically significant improvements in traffic performance:
+```bash
+# Ubuntu/Debian
+sudo apt-get install sumo sumo-tools
 
-- 12% faster trips (95% CI: 10-13%)
-- 65% less waiting (95% CI: 61-69%)
-- 9% fuel savings (95% CI: 8-10%)
-- System helps 13% of vehicles significantly
-- All metrics show non-overlapping confidence intervals
-- Results are reproducible and scientifically rigorous
+# macOS
+brew install sumo
+```
 
-The system is feasible with current technology (smartphones, connected vehicles) and provides genuine benefits even with moderate adoption rates.
+### No Vehicles Completed
+
+**Problem**: "No completed vehicles for phase1"
+
+**Causes**:
+
+- Simulation stopped too early
+- Network configuration error
+- Route file problems
+
+**Fix**: Check that simulation.rou.xml exists and run full 30 minutes.
+
+## Key Takeaways
+
+1. **Smart routing works**: 12% faster trips, 65% less waiting
+2. **Fuel savings**: 9% less fuel and CO2 per vehicle
+3. **System-wide impact**: 1,188 liters and 2,745 kg CO2 saved
+4. **Most benefit few**: Helps 13% significantly, everyone slightly
+5. **Feasible**: Works with moderate (70%) adoption rate
+
+The experiment proves intelligent railroad crossing management provides measurable benefits even with realistic adoption rates.
+
+## Files
+
+- **network.py**: Creates road network with two crossings
+- **controller.py**: Runs simulation phases and manages trains
+- **data.py**: Tracks vehicle positions and waiting events
+- **metrics.py**: Calculates statistics and comparisons
+- **config.yaml**: All settings and parameters
+- ****init**.py**: Module exports

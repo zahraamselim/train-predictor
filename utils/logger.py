@@ -17,10 +17,8 @@ class Logger:
     def section(title):
         """Log a section header"""
         if Logger.verbose:
-            print("\n" + "=" * 80)
             timestamp = datetime.now().strftime("%H:%M:%S")
-            print(f"[{timestamp}] {title}")
-            print("=" * 80)
+            print(f"\n[{timestamp}] {title}")
     
     @staticmethod
     def set_verbose(verbose):

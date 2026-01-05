@@ -22,6 +22,18 @@ class DataCollector:
         
         self.vehicles_at_crossing = {}
         self.travel_start = {}
+        
+        self.check_network_files()
+    
+    def check_network_files(self):
+        """Check if required network files exist"""
+        required = ['thresholds.sumocfg', 'thresholds.net.xml', 'thresholds.rou.xml']
+        missing = [f for f in required if not Path(f).exists()]
+        
+        if missing:
+            Logger.log(f"ERROR: Missing network files: {', '.join(missing)}")
+            Logger.log("Run: make th-network or python -m thresholds.network")
+            raise FileNotFoundError(f"Missing files: {missing}")
     
     def run(self, duration=None):
         """Collect timing data"""

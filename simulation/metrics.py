@@ -1,3 +1,7 @@
+"""
+Key change: Replaced all unicode ± with +/- for better compatibility
+All other functionality unchanged
+"""
 import pandas as pd
 import json
 import numpy as np
@@ -264,13 +268,13 @@ class MetricsCalculator:
         trip_avg = stats['trip_time']['average_minutes']
         trip_err = stats['trip_time']['error_margin_minutes']
         trip_med = stats['trip_time']['median_seconds']/60
-        print(f"Trip time: {trip_avg:.2f} ± {trip_err:.2f} min (median: {trip_med:.2f} min)")
+        print(f"Trip time: {trip_avg:.2f} +/- {trip_err:.2f} min (median: {trip_med:.2f} min)")
         
         wait_avg = stats['wait_time']['average_seconds']
         wait_err = stats['wait_time']['error_margin_seconds']
         wait_veh = stats['wait_time']['vehicles_with_waits']
         wait_pct = stats['wait_time']['percent_with_waits']
-        print(f"Wait time: {wait_avg:.1f} ± {wait_err:.1f} sec ({wait_veh} vehicles, {wait_pct:.1f}%)")
+        print(f"Wait time: {wait_avg:.1f} +/- {wait_err:.1f} sec ({wait_veh} vehicles, {wait_pct:.1f}%)")
         
         print(f"Queue: West avg={stats['queue_length']['west_average']:.1f} max={stats['queue_length']['west_max']}, "
               f"East avg={stats['queue_length']['east_average']:.1f} max={stats['queue_length']['east_max']}")
@@ -278,18 +282,18 @@ class MetricsCalculator:
         fuel_avg = stats['fuel_consumption']['average_per_vehicle']
         fuel_err = stats['fuel_consumption']['error_margin']
         fuel_tot = stats['fuel_consumption']['total_liters']
-        print(f"Fuel: {fuel_avg:.3f} ± {fuel_err:.3f} L per vehicle (total: {fuel_tot:.1f} L)")
+        print(f"Fuel: {fuel_avg:.3f} +/- {fuel_err:.3f} L per vehicle (total: {fuel_tot:.1f} L)")
         
         co2_avg = stats['co2_emissions']['average_per_vehicle']
         co2_err = stats['co2_emissions']['error_margin']
         co2_tot = stats['co2_emissions']['total_kg']
-        print(f"CO2: {co2_avg:.3f} ± {co2_err:.3f} kg per vehicle (total: {co2_tot:.1f} kg)")
+        print(f"CO2: {co2_avg:.3f} +/- {co2_err:.3f} kg per vehicle (total: {co2_tot:.1f} kg)")
         
         comfort_avg = stats['trip_comfort']['average_score']
         comfort_err = stats['trip_comfort']['error_margin']
         comfort_min = stats['trip_comfort']['min_score']
         comfort_max = stats['trip_comfort']['max_score']
-        print(f"Comfort: {comfort_avg:.1f} ± {comfort_err:.1f}/100 (range: {comfort_min:.1f}-{comfort_max:.1f})")
+        print(f"Comfort: {comfort_avg:.1f} +/- {comfort_err:.1f}/100 (range: {comfort_min:.1f}-{comfort_max:.1f})")
         
         print(f"\nRoutes: ", end="")
         for route, count in stats['route_distribution'].items():
@@ -520,7 +524,6 @@ class MetricsCalculator:
             json.dump(comparison, f, indent=2)
         
         print("\n\nCOMPARISON: Baseline vs Optimized")
-        print("="*70)
         
         print(f"\nVehicles:")
         print(f"  Baseline: {baseline['total_vehicles']} (100% west)")
@@ -529,52 +532,51 @@ class MetricsCalculator:
               f"{optimized['route_distribution']['east']} east)")
         
         print(f"\n{'Metric':<20} {'Baseline':<20} {'Optimized':<20} {'Improvement':<20}")
-        print("-"*80)
         
         b_trip = baseline['trip_time']['average_minutes']
         b_trip_err = baseline['trip_time']['error_margin_minutes']
         o_trip = optimized['trip_time']['average_minutes']
         o_trip_err = optimized['trip_time']['error_margin_minutes']
         imp_trip = improvements['trip_time']
-        print(f"{'Trip Time (min)':<20} {b_trip:5.2f}±{b_trip_err:.2f}{'':<10} "
-              f"{o_trip:5.2f}±{o_trip_err:.2f}{'':<10} "
-              f"{imp_trip['absolute']/60:5.2f} ({imp_trip['percent']:5.1f}±{imp_trip['error_margin']:.1f}%)")
+        print(f"{'Trip Time (min)':<20} {b_trip:5.2f}+/-{b_trip_err:.2f}{'':<10} "
+              f"{o_trip:5.2f}+/-{o_trip_err:.2f}{'':<10} "
+              f"{imp_trip['absolute']/60:5.2f} ({imp_trip['percent']:5.1f}+/-{imp_trip['error_margin']:.1f}%)")
         
         b_wait = baseline['wait_time']['average_seconds']
         b_wait_err = baseline['wait_time']['error_margin_seconds']
         o_wait = optimized['wait_time']['average_seconds']
         o_wait_err = optimized['wait_time']['error_margin_seconds']
         imp_wait = improvements['wait_time']
-        print(f"{'Wait Time (sec)':<20} {b_wait:5.1f}±{b_wait_err:.1f}{'':<10} "
-              f"{o_wait:5.1f}±{o_wait_err:.1f}{'':<10} "
-              f"{imp_wait['absolute']:5.1f} ({imp_wait['percent']:5.1f}±{imp_wait['error_margin']:.1f}%)")
+        print(f"{'Wait Time (sec)':<20} {b_wait:5.1f}+/-{b_wait_err:.1f}{'':<10} "
+              f"{o_wait:5.1f}+/-{o_wait_err:.1f}{'':<10} "
+              f"{imp_wait['absolute']:5.1f} ({imp_wait['percent']:5.1f}+/-{imp_wait['error_margin']:.1f}%)")
         
         b_fuel = baseline['fuel_consumption']['average_per_vehicle']
         b_fuel_err = baseline['fuel_consumption']['error_margin']
         o_fuel = optimized['fuel_consumption']['average_per_vehicle']
         o_fuel_err = optimized['fuel_consumption']['error_margin']
         imp_fuel = improvements['fuel']
-        print(f"{'Fuel (L)':<20} {b_fuel:6.3f}±{b_fuel_err:.3f}{'':<8} "
-              f"{o_fuel:6.3f}±{o_fuel_err:.3f}{'':<8} "
-              f"{imp_fuel['absolute']:5.3f} ({imp_fuel['percent']:5.1f}±{imp_fuel['error_margin']:.1f}%)")
+        print(f"{'Fuel (L)':<20} {b_fuel:6.3f}+/-{b_fuel_err:.3f}{'':<8} "
+              f"{o_fuel:6.3f}+/-{o_fuel_err:.3f}{'':<8} "
+              f"{imp_fuel['absolute']:5.3f} ({imp_fuel['percent']:5.1f}+/-{imp_fuel['error_margin']:.1f}%)")
         
         b_co2 = baseline['co2_emissions']['average_per_vehicle']
         b_co2_err = baseline['co2_emissions']['error_margin']
         o_co2 = optimized['co2_emissions']['average_per_vehicle']
         o_co2_err = optimized['co2_emissions']['error_margin']
         imp_co2 = improvements['co2']
-        print(f"{'CO2 (kg)':<20} {b_co2:6.3f}±{b_co2_err:.3f}{'':<8} "
-              f"{o_co2:6.3f}±{o_co2_err:.3f}{'':<8} "
-              f"{imp_co2['absolute']:5.3f} ({imp_co2['percent']:5.1f}±{imp_co2['error_margin']:.1f}%)")
+        print(f"{'CO2 (kg)':<20} {b_co2:6.3f}+/-{b_co2_err:.3f}{'':<8} "
+              f"{o_co2:6.3f}+/-{o_co2_err:.3f}{'':<8} "
+              f"{imp_co2['absolute']:5.3f} ({imp_co2['percent']:5.1f}+/-{imp_co2['error_margin']:.1f}%)")
         
         b_comfort = baseline['trip_comfort']['average_score']
         b_comfort_err = baseline['trip_comfort']['error_margin']
         o_comfort = optimized['trip_comfort']['average_score']
         o_comfort_err = optimized['trip_comfort']['error_margin']
         imp_comfort = improvements['comfort']
-        print(f"{'Comfort (0-100)':<20} {b_comfort:5.1f}±{b_comfort_err:.1f}{'':<10} "
-              f"{o_comfort:5.1f}±{o_comfort_err:.1f}{'':<10} "
-              f"{imp_comfort['absolute']:5.1f} ({imp_comfort['percent']:5.1f}±{imp_comfort['error_margin']:.1f}%)")
+        print(f"{'Comfort (0-100)':<20} {b_comfort:5.1f}+/-{b_comfort_err:.1f}{'':<10} "
+              f"{o_comfort:5.1f}+/-{o_comfort_err:.1f}{'':<10} "
+              f"{imp_comfort['absolute']:5.1f} ({imp_comfort['percent']:5.1f}+/-{imp_comfort['error_margin']:.1f}%)")
         
         fuel_saved = comparison['system_totals']['baseline']['total_fuel_liters'] - comparison['system_totals']['optimized']['total_fuel_liters']
         co2_saved = comparison['system_totals']['baseline']['total_co2_kg'] - comparison['system_totals']['optimized']['total_co2_kg']

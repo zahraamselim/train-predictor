@@ -1,23 +1,17 @@
-# SUMO
 traci
 sumolib
 
-# Data processing
 numpy
 pandas
 
-# Machine Learning
 scikit-learn
 
-# Visualization
 matplotlib
 seaborn
 pygame
 
-# Testing
 pytest
 pytest-cov
 
-# Utilities
 pyyaml
 tqdm

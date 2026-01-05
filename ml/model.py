@@ -31,14 +31,13 @@ class Model:
         self.results_dir = Path('outputs/results')
         self.results_dir.mkdir(parents=True, exist_ok=True)
         
-        # Get hyperparameters from config if available
         model_config = self.config.get('model', {})
         hyperparams = model_config.get('hyperparameters', {})
         
         self.hyperparameters = {
             'n_estimators': hyperparams.get('n_estimators', 200),
             'learning_rate': hyperparams.get('learning_rate', 0.05),
-            'max_depth': hyperparams.get('max_depth', 5),
+            'max_depth': hyperparams.get('max_depth', 4),  # Fixed: was 5
             'min_samples_split': hyperparams.get('min_samples_split', 3),
             'min_samples_leaf': hyperparams.get('min_samples_leaf', 2),
             'subsample': hyperparams.get('subsample', 0.9),
@@ -160,19 +159,19 @@ class Model:
         
         ax1.plot(epochs, history['train_loss'], 'b-', label='Train', linewidth=2)
         ax1.plot(epochs, history['val_loss'], 'orange', label='Validation', linewidth=2)
-        ax1.set_xlabel('Epoch', fontsize=12)
-        ax1.set_ylabel('Mean Squared Error', fontsize=12)
-        ax1.set_title(f'{model_name} - Training Loss', fontsize=14, fontweight='bold')
-        ax1.legend(fontsize=11)
+        ax1.set_xlabel('Epoch')
+        ax1.set_ylabel('Mean Squared Error')
+        ax1.set_title(f'{model_name} Training Loss')
+        ax1.legend()
         ax1.grid(True, alpha=0.3)
         ax1.set_yscale('log')
         
         ax2.plot(epochs, history['train_r2'], 'b-', label='Train', linewidth=2)
         ax2.plot(epochs, history['val_r2'], 'orange', label='Validation', linewidth=2)
-        ax2.set_xlabel('Epoch', fontsize=12)
-        ax2.set_ylabel('R² Score', fontsize=12)
-        ax2.set_title(f'{model_name} - Model Accuracy', fontsize=14, fontweight='bold')
-        ax2.legend(fontsize=11)
+        ax2.set_xlabel('Epoch')
+        ax2.set_ylabel('R2 Score')
+        ax2.set_title(f'{model_name} Model Accuracy')
+        ax2.legend()
         ax2.grid(True, alpha=0.3)
         ax2.set_ylim([0, 1.05])
         
@@ -233,11 +232,11 @@ class Model:
             'feature_names': feature_cols
         }
         
-        Logger.log(f"Train MAE: {train_error:.3f} ± {train_ci['margin']:.3f}s (95% CI)")
-        Logger.log(f"Test MAE: {test_error:.3f} ± {test_ci['margin']:.3f}s (95% CI)")
+        Logger.log(f"Train MAE: {train_error:.3f}s +/- {train_ci['margin']:.3f}s (95% CI)")
+        Logger.log(f"Test MAE: {test_error:.3f}s +/- {test_ci['margin']:.3f}s (95% CI)")
         Logger.log(f"Test RMSE: {test_rmse:.3f}s")
-        Logger.log(f"Test R²: {test_r2:.3f}")
-        Logger.log(f"CV MAE: {cv_results['cv_mean']:.3f} ± {cv_results['cv_std']:.3f}s")
+        Logger.log(f"Test R2: {test_r2:.3f}")
+        Logger.log(f"CV MAE: {cv_results['cv_mean']:.3f}s +/- {cv_results['cv_std']:.3f}s")
         Logger.log(f"Physics baseline: {physics_error:.3f}s")
         Logger.log(f"Improvement: {improvement:.1f}%")
         
@@ -256,9 +255,9 @@ class Model:
         min_val = min(metrics['train_actual'].min(), metrics['train_predictions'].min())
         max_val = max(metrics['train_actual'].max(), metrics['train_predictions'].max())
         ax1.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2)
-        ax1.set_xlabel('Actual (s)', fontsize=11)
-        ax1.set_ylabel('Predicted (s)', fontsize=11)
-        ax1.set_title(f'Training Set\nR² = {train_r2:.4f}', fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Actual (s)')
+        ax1.set_ylabel('Predicted (s)')
+        ax1.set_title(f'Training Set\nR2 = {train_r2:.4f}')
         ax1.grid(True, alpha=0.3)
         
         ax2 = plt.subplot(3, 3, 2)
@@ -269,10 +268,9 @@ class Model:
         ax2.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2)
         test_mae = metrics['test_error']
         test_ci = metrics['test_ci']['margin']
-        ax2.set_xlabel('Actual (s)', fontsize=11)
-        ax2.set_ylabel('Predicted (s)', fontsize=11)
-        ax2.set_title(f'Test Set\nMAE = {test_mae:.3f} ± {test_ci:.3f}s', 
-                     fontsize=12, fontweight='bold')
+        ax2.set_xlabel('Actual (s)')
+        ax2.set_ylabel('Predicted (s)')
+        ax2.set_title(f'Test Set\nMAE = {test_mae:.3f}s +/- {test_ci:.3f}s')
         ax2.grid(True, alpha=0.3)
         
         ax3 = plt.subplot(3, 3, 3)
@@ -282,11 +280,10 @@ class Model:
         mean_err = errors.mean()
         std_err = errors.std()
         ax3.axvline(mean_err, color='orange', linestyle='--', lw=2, label=f'Mean = {mean_err:.3f}s')
-        ax3.set_xlabel('Error (s)', fontsize=11)
-        ax3.set_ylabel('Frequency', fontsize=11)
-        ax3.set_title(f'Error Distribution\nStd = {std_err:.3f}s', 
-                     fontsize=12, fontweight='bold')
-        ax3.legend(fontsize=9)
+        ax3.set_xlabel('Error (s)')
+        ax3.set_ylabel('Frequency')
+        ax3.set_title(f'Error Distribution\nStd = {std_err:.3f}s')
+        ax3.legend()
         ax3.grid(True, alpha=0.3, axis='y')
         
         ax4 = plt.subplot(3, 3, 4)
@@ -296,9 +293,9 @@ class Model:
         y_pos = np.arange(len(features))
         ax4.barh(y_pos, importances, color=colors, alpha=0.7, edgecolor='black')
         ax4.set_yticks(y_pos)
-        ax4.set_yticklabels(features, fontsize=9)
-        ax4.set_xlabel('Importance', fontsize=11)
-        ax4.set_title('Feature Importance', fontsize=12, fontweight='bold')
+        ax4.set_yticklabels(features)
+        ax4.set_xlabel('Importance')
+        ax4.set_title('Feature Importance')
         ax4.grid(True, alpha=0.3, axis='x')
         
         ax5 = plt.subplot(3, 3, 5)
@@ -309,9 +306,8 @@ class Model:
         ax5.errorbar([1], [metrics['test_error']], 
                     yerr=[metrics['test_ci']['margin']], 
                     fmt='none', color='black', capsize=10, capthick=2)
-        ax5.set_ylabel('MAE (s)', fontsize=11)
-        ax5.set_title(f'Performance\n{metrics["improvement"]:.1f}% Better', 
-                     fontsize=12, fontweight='bold')
+        ax5.set_ylabel('MAE (s)')
+        ax5.set_title(f'Performance\n{metrics["improvement"]:.1f}% Better')
         ax5.grid(True, alpha=0.3, axis='y')
         for bar, err in zip(bars, errors):
             height = bar.get_height()
@@ -328,9 +324,9 @@ class Model:
         pred_min, pred_max = metrics['test_predictions'].min(), metrics['test_predictions'].max()
         ax6.fill_between([pred_min, pred_max], -std_resid, std_resid, 
                         alpha=0.2, color='orange')
-        ax6.set_xlabel('Predicted (s)', fontsize=11)
-        ax6.set_ylabel('Residual (s)', fontsize=11)
-        ax6.set_title('Residual Plot', fontsize=12, fontweight='bold')
+        ax6.set_xlabel('Predicted (s)')
+        ax6.set_ylabel('Residual (s)')
+        ax6.set_title('Residual Plot')
         ax6.grid(True, alpha=0.3)
         
         ax7 = plt.subplot(3, 3, 7)
@@ -339,16 +335,15 @@ class Model:
                edgecolor='black')
         ax7.axhline(metrics['cv_mean'], color='r', linestyle='--', lw=2, 
                    label=f'Mean = {metrics["cv_mean"]:.3f}s')
-        ax7.set_xlabel('Fold', fontsize=11)
-        ax7.set_ylabel('MAE (s)', fontsize=11)
-        ax7.set_title(f'5-Fold Cross-Validation\nStd = {metrics["cv_std"]:.3f}s', 
-                     fontsize=12, fontweight='bold')
-        ax7.legend(fontsize=9)
+        ax7.set_xlabel('Fold')
+        ax7.set_ylabel('MAE (s)')
+        ax7.set_title(f'5-Fold Cross-Validation\nStd = {metrics["cv_std"]:.3f}s')
+        ax7.legend()
         ax7.grid(True, alpha=0.3, axis='y')
         
         ax8 = plt.subplot(3, 3, 8)
         stats.probplot(errors, dist="norm", plot=ax8)
-        ax8.set_title('Q-Q Plot', fontsize=12, fontweight='bold')
+        ax8.set_title('Q-Q Plot')
         ax8.grid(True, alpha=0.3)
         
         ax9 = plt.subplot(3, 3, 9)
@@ -359,8 +354,8 @@ class Model:
             ['Train MAE', f'{metrics["train_error"]:.3f}s'],
             ['Test MAE', f'{metrics["test_error"]:.3f}s'],
             ['Test RMSE', f'{metrics["test_rmse"]:.3f}s'],
-            ['Test R²', f'{metrics["test_r2"]:.4f}'],
-            ['95% CI', f'±{metrics["test_ci"]["margin"]:.3f}s'],
+            ['Test R2', f'{metrics["test_r2"]:.4f}'],
+            ['95% CI', f'+/-{metrics["test_ci"]["margin"]:.3f}s'],
             ['CV MAE', f'{metrics["cv_mean"]:.3f}s'],
             ['CV Std', f'{metrics["cv_std"]:.3f}s'],
             ['Improvement', f'{metrics["improvement"]:.1f}%'],
@@ -376,8 +371,7 @@ class Model:
             table[(0, i)].set_facecolor('#4CAF50')
             table[(0, i)].set_text_props(weight='bold', color='white')
         
-        ax9.set_title(f'{model_name} Performance Summary', 
-                     fontsize=12, fontweight='bold', pad=20)
+        ax9.set_title(f'{model_name} Performance Summary', pad=20)
         
         plt.tight_layout()
         plot_path = self.plots_dir / f'{model_name.lower()}_comprehensive.png'
@@ -441,36 +435,36 @@ class Model:
     
     def print_summary(self, results):
         """Print evaluation summary"""
-        print("\nML MODEL EVALUATION SUMMARY")
-        print("\nDataset Statistics")
+        Logger.log("\nML MODEL EVALUATION SUMMARY")
+        Logger.log("\nDataset Statistics")
         stats = results['dataset_stats']
-        print(f"Total samples: {stats['n_samples']}")
-        print(f"ETA: {stats['eta_mean']:.2f} ± {stats['eta_std']:.2f}s")
-        print(f"ETD: {stats['etd_mean']:.2f} ± {stats['etd_std']:.2f}s")
+        Logger.log(f"Total samples: {stats['n_samples']}")
+        Logger.log(f"ETA: {stats['eta_mean']:.2f}s +/- {stats['eta_std']:.2f}s")
+        Logger.log(f"ETD: {stats['etd_mean']:.2f}s +/- {stats['etd_std']:.2f}s")
         
-        print("\nHyperparameters")
+        Logger.log("\nHyperparameters")
         for key, value in results['hyperparameters'].items():
-            print(f"  {key}: {value}")
+            Logger.log(f"  {key}: {value}")
         
-        print("\nETA Model (Time Until Train Arrives)")
+        Logger.log("\nETA Model (Time Until Train Arrives)")
         eta = results['eta_metrics']
-        print(f"Features: {results['model_info']['eta_features']}")
-        print(f"Test MAE: {eta['test_error']:.3f} ± {eta['test_ci']['margin']:.3f}s (95% CI)")
-        print(f"Test RMSE: {eta['test_rmse']:.3f}s")
-        print(f"Test R²: {eta['test_r2']:.4f}")
-        print(f"Cross-Val MAE: {eta['cv_mean']:.3f} ± {eta['cv_std']:.3f}s")
-        print(f"Physics baseline: {eta['physics_error']:.3f}s")
-        print(f"Improvement: {eta['improvement']:.1f}%")
+        Logger.log(f"Features: {results['model_info']['eta_features']}")
+        Logger.log(f"Test MAE: {eta['test_error']:.3f}s +/- {eta['test_ci']['margin']:.3f}s (95% CI)")
+        Logger.log(f"Test RMSE: {eta['test_rmse']:.3f}s")
+        Logger.log(f"Test R2: {eta['test_r2']:.4f}")
+        Logger.log(f"Cross-Val MAE: {eta['cv_mean']:.3f}s +/- {eta['cv_std']:.3f}s")
+        Logger.log(f"Physics baseline: {eta['physics_error']:.3f}s")
+        Logger.log(f"Improvement: {eta['improvement']:.1f}%")
         
-        print("\nETD Model (Time Until Train Clears)")
+        Logger.log("\nETD Model (Time Until Train Clears)")
         etd = results['etd_metrics']
-        print(f"Features: {results['model_info']['etd_features']}")
-        print(f"Test MAE: {etd['test_error']:.3f} ± {etd['test_ci']['margin']:.3f}s (95% CI)")
-        print(f"Test RMSE: {etd['test_rmse']:.3f}s")
-        print(f"Test R²: {etd['test_r2']:.4f}")
-        print(f"Cross-Val MAE: {etd['cv_mean']:.3f} ± {etd['cv_std']:.3f}s")
-        print(f"Physics baseline: {etd['physics_error']:.3f}s")
-        print(f"Improvement: {etd['improvement']:.1f}%\n")
+        Logger.log(f"Features: {results['model_info']['etd_features']}")
+        Logger.log(f"Test MAE: {etd['test_error']:.3f}s +/- {etd['test_ci']['margin']:.3f}s (95% CI)")
+        Logger.log(f"Test RMSE: {etd['test_rmse']:.3f}s")
+        Logger.log(f"Test R2: {etd['test_r2']:.4f}")
+        Logger.log(f"Cross-Val MAE: {etd['cv_mean']:.3f}s +/- {etd['cv_std']:.3f}s")
+        Logger.log(f"Physics baseline: {etd['physics_error']:.3f}s")
+        Logger.log(f"Improvement: {etd['improvement']:.1f}%")
     
     def train(self, features_path=None):
         """Train and evaluate both models"""

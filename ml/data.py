@@ -27,11 +27,40 @@ class Data:
         self.network_gen = NetworkGenerator(config_path)
         self.sensors = self.config['sensors']
         
-        sensor_positions = [self.sensors['s0'], self.sensors['s1'], self.sensors['s2']]
-        if not (sensor_positions[0] >= sensor_positions[1] >= sensor_positions[2]):
-            Logger.log(f"ERROR: Sensors not in descending order in config!")
-            Logger.log(f"S0={sensor_positions[0]}, S1={sensor_positions[1]}, S2={sensor_positions[2]}")
+        self.check_sumo_installed()
+        self.validate_sensors()
+    
+    def check_sumo_installed(self):
+        """Check if SUMO is available"""
+        try:
+            result = subprocess.run(['sumo', '--version'], 
+                                  capture_output=True, timeout=5)
+            if result.returncode != 0:
+                raise FileNotFoundError("SUMO not found")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            Logger.log("ERROR: SUMO not installed or not in PATH")
+            Logger.log("Install: sudo apt-get install sumo sumo-tools")
+            raise
+    
+    def validate_sensors(self):
+        """Validate sensor configuration"""
+        s0, s1, s2 = self.sensors['s0'], self.sensors['s1'], self.sensors['s2']
+        crossing = self.sensors['crossing']
+        
+        if not (s0 >= s1 >= s2):
+            Logger.log(f"ERROR: Sensors not in descending order!")
+            Logger.log(f"S0={s0}, S1={s1}, S2={s2}")
             raise ValueError("Sensor positions must be in descending order: s0 >= s1 >= s2")
+        
+        if s2 >= crossing:
+            raise ValueError(f"Last sensor ({s2}m) must be before crossing ({crossing}m)")
+        
+        min_spacing = 50
+        if s1 - s2 < min_spacing or s0 - s1 < min_spacing:
+            Logger.log(f"WARNING: Sensor spacing < {min_spacing}m may reduce accuracy")
+        
+        if crossing - s2 < 100:
+            Logger.log(f"WARNING: Last sensor very close to crossing ({crossing - s2}m)")
     
     def generate_train_params(self, n_samples):
         """Generate train parameters with realistic operating profiles"""
@@ -256,8 +285,8 @@ class Data:
         etd_physics_error = np.mean(np.abs(features_df['etd_actual'] - features_df['etd_physics']))
         
         Logger.log(f"Extracted {len(features_df)} feature sets")
-        Logger.log(f"Speed at last sensor - Mean: {features_df['last_speed'].mean():.2f} m/s, Std: {features_df['last_speed'].std():.2f} m/s")
-        Logger.log(f"ETA actual - Mean: {features_df['eta_actual'].mean():.2f}s, Std: {features_df['eta_actual'].std():.2f}s")
+        Logger.log(f"Speed at last sensor: {features_df['last_speed'].mean():.2f} m/s +/- {features_df['last_speed'].std():.2f} m/s")
+        Logger.log(f"ETA actual: {features_df['eta_actual'].mean():.2f}s +/- {features_df['eta_actual'].std():.2f}s")
         Logger.log(f"ETA physics baseline error: {eta_physics_error:.3f}s")
         Logger.log(f"ETD physics baseline error: {etd_physics_error:.3f}s")
         Logger.log(f"Saved to {output_path}")
@@ -286,10 +315,10 @@ class Data:
             color = 'red' if name == 'crossing' else 'gray'
             ax.axhline(pos, color=color, linestyle=style, linewidth=2 if name == 'crossing' else 1, alpha=0.7)
         
-        ax.set_xlabel('Time (seconds)', fontsize=12)
-        ax.set_ylabel('Position (meters)', fontsize=12)
-        ax.set_title('Sample Train Trajectories', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=8)
+        ax.set_xlabel('Time (seconds)')
+        ax.set_ylabel('Position (meters)')
+        ax.set_title('Sample Train Trajectories')
+        ax.legend()
         ax.grid(True, alpha=0.3)
         
         ax = axes[0, 1]
@@ -300,10 +329,10 @@ class Data:
                    label=f'Train {run_id} ({scenario})',
                    color=colors[i], linewidth=2, alpha=0.8)
         
-        ax.set_xlabel('Time (seconds)', fontsize=12)
-        ax.set_ylabel('Speed (m/s)', fontsize=12)
-        ax.set_title('Train Speed Profiles', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=8)
+        ax.set_xlabel('Time (seconds)')
+        ax.set_ylabel('Speed (m/s)')
+        ax.set_title('Train Speed Profiles')
+        ax.legend()
         ax.grid(True, alpha=0.3)
         
         ax = axes[1, 0]
@@ -315,10 +344,10 @@ class Data:
                    color=colors[i], linewidth=2, alpha=0.8)
         
         ax.axhline(0, color='black', linestyle='-', linewidth=1)
-        ax.set_xlabel('Time (seconds)', fontsize=12)
-        ax.set_ylabel('Acceleration (m/s^2)', fontsize=12)
-        ax.set_title('Train Acceleration Profiles', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=8)
+        ax.set_xlabel('Time (seconds)')
+        ax.set_ylabel('Acceleration (m/s^2)')
+        ax.set_title('Train Acceleration Profiles')
+        ax.legend()
         ax.grid(True, alpha=0.3)
         
         ax = axes[1, 1]
@@ -334,10 +363,10 @@ class Data:
             color = 'red' if name == 'crossing' else 'gray'
             ax.axvline(pos, color=color, linestyle=style, linewidth=2 if name == 'crossing' else 1, alpha=0.7)
         
-        ax.set_xlabel('Position (meters)', fontsize=12)
-        ax.set_ylabel('Speed (m/s)', fontsize=12)
-        ax.set_title('Speed vs Position', fontsize=14, fontweight='bold')
-        ax.legend(fontsize=8)
+        ax.set_xlabel('Position (meters)')
+        ax.set_ylabel('Speed (m/s)')
+        ax.set_title('Speed vs Position')
+        ax.legend()
         ax.grid(True, alpha=0.3)
         
         plt.tight_layout()
@@ -365,18 +394,17 @@ class Data:
         for i, (feature, title, color) in enumerate(features_to_plot):
             ax = axes[i]
             ax.hist(features_df[feature], bins=30, color=color, alpha=0.7, edgecolor='black')
-            ax.set_xlabel(title, fontsize=11)
-            ax.set_ylabel('Frequency', fontsize=11)
-            ax.set_title(f'{title}\nMean: {features_df[feature].mean():.2f}, Std: {features_df[feature].std():.2f}',
-                        fontsize=11, fontweight='bold')
+            ax.set_xlabel(title)
+            ax.set_ylabel('Frequency')
+            ax.set_title(f'{title}\nMean: {features_df[feature].mean():.2f}, Std: {features_df[feature].std():.2f}')
             ax.grid(True, alpha=0.3, axis='y')
         
         ax = axes[8]
         ax.hist(features_df['eta_actual'], bins=30, alpha=0.6, label='ETA', color='blue', edgecolor='black')
         ax.hist(features_df['etd_actual'], bins=30, alpha=0.6, label='ETD', color='red', edgecolor='black')
-        ax.set_xlabel('Time (seconds)', fontsize=11)
-        ax.set_ylabel('Frequency', fontsize=11)
-        ax.set_title('Target Variables: ETA and ETD', fontsize=11, fontweight='bold')
+        ax.set_xlabel('Time (seconds)')
+        ax.set_ylabel('Frequency')
+        ax.set_title('Target Variables: ETA and ETD')
         ax.legend()
         ax.grid(True, alpha=0.3, axis='y')
         
@@ -408,10 +436,9 @@ class Data:
             
             corr = features_df[feature].corr(features_df['eta_actual'])
             
-            ax.set_xlabel(feature.replace('_', ' ').title(), fontsize=10)
-            ax.set_ylabel('ETA (seconds)', fontsize=10)
-            ax.set_title(f'{feature.replace("_", " ").title()}\nCorrelation: {corr:.3f}', 
-                        fontsize=11, fontweight='bold')
+            ax.set_xlabel(feature.replace('_', ' ').title())
+            ax.set_ylabel('ETA (seconds)')
+            ax.set_title(f'{feature.replace("_", " ").title()}\nCorrelation: {corr:.3f}')
             ax.grid(True, alpha=0.3)
         
         plt.tight_layout()
@@ -434,10 +461,9 @@ class Data:
             
             physics_error = np.mean(np.abs(features_df[target] - features_df[physics]))
             label = 'ETA' if idx == 0 else 'ETD'
-            ax.set_xlabel(f'Actual {label} (seconds)', fontsize=12)
-            ax.set_ylabel('Physics Prediction (seconds)', fontsize=12)
-            ax.set_title(f'{label}: Physics Baseline\nMAE = {physics_error:.3f}s', 
-                        fontsize=14, fontweight='bold')
+            ax.set_xlabel(f'Actual {label} (seconds)')
+            ax.set_ylabel('Physics Prediction (seconds)')
+            ax.set_title(f'{label}: Physics Baseline\nMAE = {physics_error:.3f}s')
             ax.legend()
             ax.grid(True, alpha=0.3)
         
