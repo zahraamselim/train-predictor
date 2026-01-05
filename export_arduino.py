@@ -1,6 +1,5 @@
 """
 Export models and configuration to Arduino C headers
-Replaces: hardware/exporters/model.py, hardware/exporters/threshold.py, hardware/exporters/config.py
 Usage: python export_arduino.py
 """
 
@@ -24,37 +23,30 @@ class ArduinoExporter:
         """Export sensor positions and timing thresholds"""
         Logger.section("Exporting thresholds")
         
-        sensors = self.config['sensors']
         demo = self.config['demo']
+        
+        # Calculate sensor positions from crossing
+        sensor_2_pos = demo['last_sensor_to_crossing']
+        sensor_1_pos = sensor_2_pos + demo['sensor_spacing']
+        sensor_0_pos = sensor_1_pos + demo['sensor_spacing']
         
         header = f"""#ifndef THRESHOLDS_H
 #define THRESHOLDS_H
 
-/*
- * Physical Demo Configuration
- * Scale: Tabletop model
- * Sensors: 3 IR sensors, 10cm apart
- */
-
 #define DEMO_MODE true
 
-// Sensor positions (meters from crossing)
-// Physical layout: S0 --10cm-- S1 --10cm-- S2 --20cm-- Crossing
-#define SENSOR_0_POS {demo['sensor_spacing'] * 2}f    // 20cm from crossing
-#define SENSOR_1_POS {demo['sensor_spacing']}f        // 10cm from crossing
-#define SENSOR_2_POS {demo['last_sensor_to_crossing']}f  // At crossing
+#define SENSOR_0_POS {sensor_0_pos}f
+#define SENSOR_1_POS {sensor_1_pos}f
+#define SENSOR_2_POS {sensor_2_pos}f
 
-// Demo timing (seconds)
 #define GATE_CLOSE_THRESHOLD {demo['gate_close_time']}f
 #define NOTIFICATION_THRESHOLD {demo['notification_time']}f
 #define GATE_OPEN_DELAY {demo['gate_open_delay']}f
 
-// Physical measurements
 #define SENSOR_SPACING {demo['sensor_spacing']}f
 #define LAST_SENSOR_TO_CROSSING {demo['last_sensor_to_crossing']}f
 #define CROSSING_TO_INTERSECTION {demo['crossing_to_intersection']}f
 
-// Expected movement speed
 #define EXPECTED_HAND_SPEED {demo['expected_hand_speed']}f
 
 #endif
@@ -64,9 +56,13 @@ class ArduinoExporter:
         output_path.write_text(header)
         
         Logger.log(f"Saved: {output_path}")
-        Logger.log(f"  Sensor 0: {demo['sensor_spacing'] * 2}m")
-        Logger.log(f"  Sensor 1: {demo['sensor_spacing']}m")
-        Logger.log(f"  Sensor 2: {demo['last_sensor_to_crossing']}m")
+        Logger.log(f"  Sensor 0: {sensor_0_pos}m ({sensor_0_pos*100:.0f}cm from crossing)")
+        Logger.log(f"  Sensor 1: {sensor_1_pos}m ({sensor_1_pos*100:.0f}cm from crossing)")
+        Logger.log(f"  Sensor 2: {sensor_2_pos}m ({sensor_2_pos*100:.0f}cm from crossing)")
+        Logger.log(f"  Gate close: {demo['gate_close_time']}s before arrival")
+        Logger.log(f"  Notification: {demo['notification_time']}s before arrival")
+        Logger.log(f"  Train length: {demo['train_length']}m ({demo['train_length']*100:.0f}cm)")
+        Logger.log(f"  Expected speed: {demo['expected_hand_speed']}m/s ({demo['expected_hand_speed']*100:.0f}cm/s)")
     
     def export_model(self):
         """Export ML model functions"""
@@ -77,8 +73,8 @@ class ArduinoExporter:
         
         if eta_path.exists() and etd_path.exists():
             Logger.log("Found trained Random Forest models")
-            Logger.log("NOTE: Full models too large for Arduino Uno (need Mega/ESP32)")
-            Logger.log("Generating physics-based fallback for Arduino compatibility")
+            Logger.log("NOTE: Full models too large for Arduino Uno")
+            Logger.log("Generating physics-based fallback")
         else:
             Logger.log("No trained models found")
             Logger.log("Generating physics-based predictions")
@@ -86,14 +82,6 @@ class ArduinoExporter:
         header = """#ifndef MODEL_H
 #define MODEL_H
 
-/*
- * ML Model Functions for Railway Crossing Control
- * 
- * Physics-based predictions (Arduino Uno compatible)
- * Full Random Forest models require Arduino Mega or ESP32
- */
-
-// Feature indices for ETA (6 features)
 #define FEAT_TIME_01 0
 #define FEAT_TIME_12 1
 #define FEAT_SPEED_01 2
@@ -101,7 +89,6 @@ class ArduinoExporter:
 #define FEAT_ACCEL 4
 #define FEAT_DISTANCE 5
 
-// Feature indices for ETD (7 features)
 #define FEAT_ETD_TIME_01 0
 #define FEAT_ETD_TIME_12 1
 #define FEAT_ETD_SPEED_01 2
@@ -110,13 +97,6 @@ class ArduinoExporter:
 #define FEAT_ETD_DISTANCE 5
 #define FEAT_ETD_TRAIN_LENGTH 6
 
-/**
- * Predict ETA (Estimated Time of Arrival)
- * Time until train front reaches crossing
- * 
- * @param features[6]: [time_01, time_12, speed_01, speed_12, accel, distance]
- * @return ETA in seconds, or -1 if invalid
- */
 float predictETA(float features[6]) {
     float speed = features[FEAT_SPEED_12];
     float accel = features[FEAT_ACCEL];
@@ -143,13 +123,6 @@ float predictETA(float features[6]) {
     return distance / speed;
 }
 
-/**
- * Predict ETD (Estimated Time of Departure)
- * Time until train rear clears crossing
- * 
- * @param features[7]: [time_01, time_12, speed_01, speed_12, accel, distance, train_length]
- * @return ETD in seconds, or -1 if invalid
- */
 float predictETD(float features[7]) {
     float speed = features[FEAT_ETD_SPEED_12];
     float accel = features[FEAT_ETD_ACCEL];
@@ -179,15 +152,8 @@ float predictETD(float features[7]) {
     return total_distance / speed;
 }
 
-/**
- * Simplified ETD estimate from ETA
- * 
- * @param eta: Estimated time of arrival (from predictETA)
- * @param last_speed: Speed at last sensor
- * @return ETD in seconds, or -1 if invalid
- */
 float estimateETD(float eta, float last_speed) {
-    const float AVG_TRAIN_LENGTH = 0.30f;
+    const float AVG_TRAIN_LENGTH = 0.15f;
     
     if (eta <= 0 || last_speed <= 0) return -1;
     
@@ -213,11 +179,6 @@ float estimateETD(float eta, float last_speed) {
 
 #include "thresholds.h"
 
-/*
- * Configuration Helper Functions
- */
-
-// Timing thresholds
 inline float getGateCloseThreshold() {
     return GATE_CLOSE_THRESHOLD;
 }
@@ -230,7 +191,6 @@ inline float getGateOpenDelay() {
     return GATE_OPEN_DELAY;
 }
 
-// Sensor positions
 inline float getSensor0Position() {
     return SENSOR_0_POS;
 }
@@ -243,25 +203,20 @@ inline float getSensor2Position() {
     return SENSOR_2_POS;
 }
 
-// Display and buzzer settings
 inline unsigned long getBuzzerInterval() {
-    return 500;  // 500ms beep interval
+    return 500;
 }
 
 inline unsigned long getDisplayUpdateInterval() {
-    return 100;  // Update 10 times per second
+    return 100;
 }
 
-// Physical parameters
 inline float getDefaultTrainLength() {
-    return 0.30f;  // 30cm for demo
+    return 0.15f;
 }
 
-// Servo angles
 #define GATE_OPEN_ANGLE 90
 #define GATE_CLOSED_ANGLE 0
-
-// Display brightness (0-15)
 #define DISPLAY_BRIGHTNESS 0x0f
 
 #endif
@@ -282,10 +237,9 @@ inline float getDefaultTrainLength() {
         
         Logger.log("\nArduino export complete!")
         Logger.log("\nGenerated files:")
-        Logger.log(f"  {self.hardware_dir / 'model.h'} - ML prediction functions")
-        Logger.log(f"  {self.hardware_dir / 'thresholds.h'} - Sensor positions & timing")
-        Logger.log(f"  {self.hardware_dir / 'config.h'} - Helper functions")
-        Logger.log("\nReady to upload sketch.ino to Arduino")
+        Logger.log(f"  {self.hardware_dir / 'model.h'}")
+        Logger.log(f"  {self.hardware_dir / 'thresholds.h'}")
+        Logger.log(f"  {self.hardware_dir / 'config.h'}")
 
 
 if __name__ == '__main__':

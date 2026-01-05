@@ -99,5 +99,6 @@ all: train simulate arduino
 clean:
 	rm -rf outputs/
 	rm -f *.xml temp_*
+	rm -f simulation.sumocfg
 	rm -f arduino/model.h arduino/thresholds.h arduino/config.h
 	@echo "All generated files cleaned"

@@ -1,6 +1,6 @@
 /*
  * Railway Crossing Control System
- * Uses Random Forest ML models for ETA/ETD prediction
+ * Uses ML models for ETA/ETD prediction
  * 
  * Hardware:
  * - 3 IR sensors (pins 2, 3, 4)
@@ -15,7 +15,6 @@
 #include "model.h"
 #include "config.h"
 
-// Pin definitions
 #define SENSOR_0_PIN 2
 #define SENSOR_1_PIN 3
 #define SENSOR_2_PIN 4
@@ -31,30 +30,26 @@
 Servo gateServo;
 TM1637Display display(TM1637_CLK, TM1637_DIO);
 
-// Sensor state
 bool sensor_triggered[3] = {false, false, false};
 unsigned long sensor_times[3] = {0, 0, 0};
-float sensor_speeds[3] = {0, 0, 0};
 
-// Prediction state
 float predicted_eta = 0;
 float predicted_etd = 0;
 unsigned long prediction_time = 0;
 bool predictions_ready = false;
 
-// Control state
 bool intersection_notified = false;
 bool gates_closed = false;
 
-// Display/buzzer state
 unsigned long last_display_update = 0;
 unsigned long last_buzzer_toggle = 0;
+unsigned long last_led_flash = 0;
 bool buzzer_state = false;
+bool led_flash_state = false;
 
 void setup() {
     Serial.begin(9600);
     
-    // Configure pins
     pinMode(SENSOR_0_PIN, INPUT);
     pinMode(SENSOR_1_PIN, INPUT);
     pinMode(SENSOR_2_PIN, INPUT);
@@ -64,13 +59,11 @@ void setup() {
     pinMode(INTER_GREEN_LED, OUTPUT);
     pinMode(BUZZER_PIN, OUTPUT);
     
-    // Setup servo and display
     gateServo.attach(SERVO_PIN);
     gateServo.write(GATE_OPEN_ANGLE);
     display.setBrightness(DISPLAY_BRIGHTNESS);
     display.clear();
     
-    // Initial state: all clear
     digitalWrite(CROSSING_GREEN_LED, HIGH);
     digitalWrite(CROSSING_RED_LED, LOW);
     digitalWrite(INTER_GREEN_LED, HIGH);
@@ -85,101 +78,100 @@ void setup() {
     Serial.print("m, S2=");
     Serial.print(getSensor2Position(), 2);
     Serial.println("m");
+    Serial.print("Gate close: ");
+    Serial.print(getGateCloseThreshold(), 1);
+    Serial.print("s, Notification: ");
+    Serial.print(getNotificationThreshold(), 1);
+    Serial.println("s\n");
 }
 
 void loop() {
     checkSensors();
     
-    // Calculate predictions after all 3 sensors triggered
     if (sensor_triggered[0] && sensor_triggered[1] && sensor_triggered[2] && !predictions_ready) {
         calculatePredictions();
     }
     
-    // Control system based on predictions
     if (predictions_ready) {
         float elapsed = (millis() - prediction_time) / 1000.0;
         float eta_remaining = predicted_eta - elapsed;
         float etd_remaining = predicted_etd - elapsed;
         
-        // Stage 1: Before gate closes
         if (!gates_closed) {
             updateDisplay(eta_remaining);
             
-            // Notify intersection
             if (eta_remaining <= getNotificationThreshold() && !intersection_notified) {
                 notifyIntersection();
             }
             
-            // Close gate
             if (eta_remaining <= getGateCloseThreshold()) {
                 closeGates();
             }
-        }
-        // Stage 2: Gate closed, showing ETD countdown
-        else {
+        } else {
             updateDisplay(etd_remaining);
+            updateFlashingLED();
             
-            // Open gate when train clears
             if (etd_remaining <= 0) {
                 openGates();
                 resetSystem();
             }
         }
         
-        // Update buzzer
         if (intersection_notified) {
             updateBuzzer();
         }
     }
     
-    delay(10);
+    delay(30);
 }
 
 void checkSensors() {
-    // Check sensor 0 (furthest)
     if (digitalRead(SENSOR_0_PIN) == HIGH && !sensor_triggered[0]) {
         sensor_triggered[0] = true;
         sensor_times[0] = millis();
-        Serial.println("[S0] Train detected (furthest sensor)");
+        Serial.println("[S0] Train detected (furthest)");
     }
     
-    // Check sensor 1 (middle)
     if (digitalRead(SENSOR_1_PIN) == HIGH && !sensor_triggered[1] && sensor_triggered[0]) {
         sensor_triggered[1] = true;
         sensor_times[1] = millis();
         
-        // Calculate speed between S0 and S1
         float time_01 = (sensor_times[1] - sensor_times[0]) / 1000.0;
         float distance_01 = getSensor0Position() - getSensor1Position();
-        sensor_speeds[0] = distance_01 / time_01;
+        float speed_01 = distance_01 / time_01;
         
-        Serial.println("[S1] Train detected (middle sensor)");
+        Serial.println("[S1] Train detected (middle)");
         Serial.print("[SPEED] S0->S1: ");
-        Serial.print(sensor_speeds[0], 2);
-        Serial.println(" m/s");
+        Serial.print(speed_01, 3);
+        Serial.print(" m/s (");
+        Serial.print(speed_01 * 100, 1);
+        Serial.print(" cm/s) in ");
+        Serial.print(time_01, 2);
+        Serial.println("s");
     }
     
-    // Check sensor 2 (nearest)
     if (digitalRead(SENSOR_2_PIN) == HIGH && !sensor_triggered[2] && sensor_triggered[1]) {
         sensor_triggered[2] = true;
         sensor_times[2] = millis();
         
-        // Calculate speed between S1 and S2
         float time_12 = (sensor_times[2] - sensor_times[1]) / 1000.0;
         float distance_12 = getSensor1Position() - getSensor2Position();
-        sensor_speeds[1] = distance_12 / time_12;
+        float speed_12 = distance_12 / time_12;
         
-        Serial.println("[S2] Train detected (nearest sensor)");
+        Serial.println("[S2] Train detected (nearest)");
         Serial.print("[SPEED] S1->S2: ");
-        Serial.print(sensor_speeds[1], 2);
-        Serial.println(" m/s");
+        Serial.print(speed_12, 3);
+        Serial.print(" m/s (");
+        Serial.print(speed_12 * 100, 1);
+        Serial.print(" cm/s) in ");
+        Serial.print(time_12, 2);
+        Serial.println("s");
     }
 }
 
 void calculatePredictions() {
     Serial.println("\n[ML] Computing ETA and ETD...");
     
-    // Calculate timing between sensors
     float time_01 = (sensor_times[1] - sensor_times[0]) / 1000.0;
     float time_12 = (sensor_times[2] - sensor_times[1]) / 1000.0;
     
@@ -189,73 +181,53 @@ void calculatePredictions() {
         return;
     }
     
-    // Calculate distances
     float distance_01 = getSensor0Position() - getSensor1Position();
     float distance_12 = getSensor1Position() - getSensor2Position();
     float distance_to_crossing = getSensor2Position();
     
-    // Calculate speeds
     float speed_01 = distance_01 / time_01;
     float speed_12 = distance_12 / time_12;
-    
-    // Calculate acceleration
     float accel = (speed_12 - speed_01) / time_12;
     
-    // Prepare features for ETA model (6 features)
     float eta_features[6] = {
-        time_01,
-        time_12,
-        speed_01,
-        speed_12,
-        accel,
-        distance_to_crossing
+        time_01, time_12, speed_01, speed_12, accel, distance_to_crossing
     };
     
-    // Predict ETA
     float eta = predictETA(eta_features);
     
-    // Validate ETA
-    if (eta <= 0 || eta > 1000) {
+    if (eta <= 0 || eta > 100) {
         Serial.println("[WARNING] Invalid ETA, using fallback");
         eta = distance_to_crossing / speed_12;
     }
     
-    // Prepare features for ETD model (7 features)
     float etd_features[7] = {
-        time_01,
-        time_12,
-        speed_01,
-        speed_12,
-        accel,
-        distance_to_crossing,
-        getDefaultTrainLength()
+        time_01, time_12, speed_01, speed_12, accel,
+        distance_to_crossing, getDefaultTrainLength()
     };
     
-    // Predict ETD
     float etd = predictETD(etd_features);
     
-    // Validate ETD
-    if (etd <= 0 || etd > 1000 || etd < eta) {
+    if (etd <= 0 || etd > 100 || etd < eta) {
         Serial.println("[WARNING] Invalid ETD, using estimate");
         etd = estimateETD(eta, speed_12);
     }
     
-    // Store predictions
     predicted_eta = eta;
     predicted_etd = etd;
     prediction_time = millis();
     predictions_ready = true;
     
-    // Log results
     Serial.print("[ML RESULTS] ETA: ");
     Serial.print(predicted_eta, 2);
     Serial.print("s, ETD: ");
     Serial.print(predicted_etd, 2);
     Serial.println("s");
     Serial.print("[INFO] Speed: ");
-    Serial.print(speed_12 * 3.6, 1);
-    Serial.print(" km/h, Accel: ");
-    Serial.print(accel, 3);
+    Serial.print(speed_12, 3);
+    Serial.print(" m/s (");
+    Serial.print(speed_12 * 100, 1);
+    Serial.print(" cm/s), Accel: ");
+    Serial.print(accel, 4);
     Serial.println(" m/s^2\n");
 }
 
@@ -263,77 +235,83 @@ void notifyIntersection() {
     intersection_notified = true;
     digitalWrite(INTER_GREEN_LED, LOW);
     digitalWrite(INTER_RED_LED, HIGH);
-    Serial.println("[NOTIFY] Intersection alerted - Red light + Buzzer");
+    Serial.println("[NOTIFY] Intersection alerted");
 }
 
 void closeGates() {
     gates_closed = true;
-    
     gateServo.write(GATE_CLOSED_ANGLE);
     digitalWrite(CROSSING_GREEN_LED, LOW);
     digitalWrite(CROSSING_RED_LED, HIGH);
-    
-    Serial.println("[GATE] CLOSED - Now showing ETD countdown");
+    led_flash_state = true;
+    last_led_flash = millis();
+    Serial.println("[GATE] CLOSED");
 }
 
 void openGates() {
     gateServo.write(GATE_OPEN_ANGLE);
-    
     digitalWrite(CROSSING_GREEN_LED, HIGH);
     digitalWrite(CROSSING_RED_LED, LOW);
     digitalWrite(INTER_GREEN_LED, HIGH);
     digitalWrite(INTER_RED_LED, LOW);
     digitalWrite(BUZZER_PIN, LOW);
-    
     display.clear();
-    
-    Serial.println("[GATE] OPENED - All clear\n");
+    Serial.println("[GATE] OPENED\n");
 }
 
 void updateDisplay(float time_remaining) {
     unsigned long now = millis();
+    unsigned long update_interval = gates_closed ? 50 : 100;
     
-    if (now - last_display_update >= getDisplayUpdateInterval()) {
-        int remaining = (int)time_remaining;
-        if (remaining < 0) remaining = 0;
-        
-        // Display as MM:SS
-        int minutes = remaining / 60;
-        int seconds = remaining % 60;
-        
-        display.showNumberDecEx(minutes * 100 + seconds, 0b01000000, true);
-        
+    if (now - last_display_update >= update_interval) {
+        if (gates_closed && time_remaining < 10) {
+            int whole = (int)time_remaining;
+            int tenths = (int)((time_remaining - whole) * 10);
+            if (whole < 0) whole = 0;
+            if (tenths < 0) tenths = 0;
+            display.showNumberDecEx(whole * 10 + tenths, 0b00100000, false);
+        } else {
+            int remaining = (int)time_remaining;
+            if (remaining < 0) remaining = 0;
+            display.showNumberDec(remaining, false);
+        }
         last_display_update = now;
     }
 }
 
 void updateBuzzer() {
     unsigned long now = millis();
+    unsigned long beep_interval = gates_closed ? 200 : 500;
     
-    if (now - last_buzzer_toggle >= getBuzzerInterval()) {
+    if (now - last_buzzer_toggle >= beep_interval) {
         buzzer_state = !buzzer_state;
         digitalWrite(BUZZER_PIN, buzzer_state ? HIGH : LOW);
         last_buzzer_toggle = now;
     }
 }
 
+void updateFlashingLED() {
+    unsigned long now = millis();
+    
+    if (now - last_led_flash >= 200) {
+        led_flash_state = !led_flash_state;
+        digitalWrite(CROSSING_RED_LED, led_flash_state ? HIGH : LOW);
+        last_led_flash = now;
+    }
+}
+
 void resetSystem() {
-    // Reset sensors
     for (int i = 0; i < 3; i++) {
         sensor_triggered[i] = false;
         sensor_times[i] = 0;
-        sensor_speeds[i] = 0;
     }
     
-    // Reset predictions
     predicted_eta = 0;
     predicted_etd = 0;
     prediction_time = 0;
     predictions_ready = false;
-    
-    // Reset control state
     intersection_notified = false;
     gates_closed = false;
     
-    Serial.println("[RESET] System ready for next train");
+    Serial.println("[RESET] System ready\n");
 }
