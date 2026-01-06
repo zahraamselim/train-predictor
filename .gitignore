@@ -1,55 +1,25 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
+*.pyc
+
+# Virtual envs
+.venv/
 venv/
-ENV/
-.venv
 
-# ML artifacts
-ml/data/raw/*.csv
-ml/data/processed/*.csv
-ml/models/*.pkl
-ml/plots/*.png
-!ml/data/raw/.gitkeep
-!ml/data/processed/.gitkeep
-!ml/models/.gitkeep
-!ml/plots/.gitkeep
-
-# SUMO outputs
+# Outputs / generated
+outputs/
+*.pkl
+*.csv
+*.png
 *.log
-*.xml.gz
-tripinfo*.xml
-summary*.xml
-detector*.xml
 
-# Arduino generated
-arduino/eta_model.h
-arduino/crossing_config.h
+# SUMO / simulation files
+*.xml
+*.sumocfg
 
-# IDE
+# Editor / OS
 .vscode/
 .idea/
 *.swp
-*.swo
-*~
-.cursor/
-
-# OS
 .DS_Store
-Thumbs.db
-
-# Docker
-docker/volumes/
-
-# Test outputs
-test_output/
-*.tmp
-legacy/
-
-*.xml 
-temp_*
-simulation.sumocfg
+.cursor
