@@ -50,5 +50,6 @@ test_output/
 *.tmp
 legacy/
 
-*.xml temp_*
+*.xml 
+temp_*
 simulation.sumocfg
