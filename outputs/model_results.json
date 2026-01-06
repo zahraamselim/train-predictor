@@ -1,0 +1,33 @@
+{
+  "dataset": {
+    "n_samples": 2000,
+    "eta_mean": 10.4028,
+    "eta_std": 0.8567783812616298,
+    "etd_mean": 13.98205,
+    "etd_std": 1.588998192298394
+  },
+  "eta_model": {
+    "type": "RandomForest",
+    "n_estimators": 10,
+    "max_depth": 8,
+    "n_features": 14,
+    "train_mae": 0.014253911486635143,
+    "test_mae": 0.02260760255798833,
+    "test_rmse": 0.041273242383824384,
+    "test_r2": 0.9973474618814956,
+    "physics_baseline": 0.16397528596644081,
+    "improvement_percent": 86.2127988222474
+  },
+  "etd_model": {
+    "type": "RandomForest",
+    "n_estimators": 5,
+    "max_depth": 10,
+    "n_features": 14,
+    "train_mae": 0.02697782344180614,
+    "test_mae": 0.046284616254403534,
+    "test_rmse": 0.14325243281496414,
+    "test_r2": 0.9909690470897251,
+    "physics_baseline": 0.2819997262293867,
+    "improvement_percent": 83.58699957859027
+  }
+}

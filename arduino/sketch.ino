@@ -264,17 +264,19 @@ void updateDisplay(float time_remaining) {
     unsigned long update_interval = gates_closed ? 50 : 100;
     
     if (now - last_display_update >= update_interval) {
-        if (gates_closed && time_remaining < 10) {
-            int whole = (int)time_remaining;
-            int tenths = (int)((time_remaining - whole) * 10);
-            if (whole < 0) whole = 0;
-            if (tenths < 0) tenths = 0;
-            display.showNumberDecEx(whole * 10 + tenths, 0b00100000, false);
-        } else {
-            int remaining = (int)time_remaining;
-            if (remaining < 0) remaining = 0;
-            display.showNumberDec(remaining, false);
-        }
+        if (time_remaining < 0) time_remaining = 0;
+        
+        int seconds = (int)time_remaining;
+        int centiseconds = (int)((time_remaining - seconds) * 100);
+        
+        if (seconds > 99) seconds = 99;
+        if (centiseconds > 99) centiseconds = 99;
+        if (centiseconds < 0) centiseconds = 0;
+        
+        int display_value = seconds * 100 + centiseconds;
+        
+        display.showNumberDecEx(display_value, 0b00100000, true);
+        
         last_display_update = now;
     }
 }

@@ -49,3 +49,6 @@ docker/volumes/
 test_output/
 *.tmp
 legacy/
+
+*.xml temp_*
+simulation.sumocfg
