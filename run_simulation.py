@@ -27,7 +27,7 @@ class TrafficSimulation:
         self.waiting_east = {}
     
     def generate_network(self):
-        """Create SUMO network with two routes"""
+        """Create SUMO network with enhanced visuals"""
         Logger.section("Generating simulation network")
         
         net = self.config['network']
@@ -54,46 +54,72 @@ class TrafficSimulation:
     <node id="ne_junction" x="{east_x}" y="{north_y}" type="priority"/>
     <node id="se_junction" x="{east_x}" y="{south_y}" type="priority"/>
     <node id="east_crossing" x="{east_x}" y="0" type="rail_crossing"/>
+    
+    <node id="train_start" x="-{length*1.5}" y="0" type="priority"/>
+    <node id="train_end" x="{length*1.5}" y="0" type="priority"/>
 </nodes>"""
         
-        edges = """<?xml version="1.0" encoding="UTF-8"?>
+        edges = f"""<?xml version="1.0" encoding="UTF-8"?>
 <edges>
-    <edge id="n_in_w" from="n_west" to="nw_junction" numLanes="1" speed="16.67"/>
-    <edge id="n_w_e" from="nw_junction" to="ne_junction" numLanes="1" speed="16.67"/>
-    <edge id="n_out_e" from="ne_junction" to="n_east" numLanes="1" speed="16.67"/>
+    <edge id="n_in_w" from="n_west" to="nw_junction" numLanes="2" speed="16.67" width="7.0"/>
+    <edge id="n_w_e" from="nw_junction" to="ne_junction" numLanes="2" speed="16.67" width="7.0"/>
+    <edge id="n_out_e" from="ne_junction" to="n_east" numLanes="2" speed="16.67" width="7.0"/>
     
-    <edge id="s_in_w" from="s_west" to="sw_junction" numLanes="1" speed="16.67"/>
-    <edge id="s_w_e" from="sw_junction" to="se_junction" numLanes="1" speed="16.67"/>
-    <edge id="s_out_e" from="se_junction" to="s_east" numLanes="1" speed="16.67"/>
+    <edge id="s_in_w" from="s_west" to="sw_junction" numLanes="2" speed="16.67" width="7.0"/>
+    <edge id="s_w_e" from="sw_junction" to="se_junction" numLanes="2" speed="16.67" width="7.0"/>
+    <edge id="s_out_e" from="se_junction" to="s_east" numLanes="2" speed="16.67" width="7.0"/>
     
-    <edge id="v_w_n_s" from="nw_junction" to="west_crossing" numLanes="1" speed="13.89"/>
-    <edge id="v_w_x_s" from="west_crossing" to="sw_junction" numLanes="1" speed="13.89"/>
+    <edge id="v_w_n_s" from="nw_junction" to="west_crossing" numLanes="1" speed="13.89" width="5.0"/>
+    <edge id="v_w_x_s" from="west_crossing" to="sw_junction" numLanes="1" speed="13.89" width="5.0"/>
     
-    <edge id="v_e_n_s" from="ne_junction" to="east_crossing" numLanes="1" speed="13.89"/>
-    <edge id="v_e_x_s" from="east_crossing" to="se_junction" numLanes="1" speed="13.89"/>
+    <edge id="v_e_n_s" from="ne_junction" to="east_crossing" numLanes="1" speed="13.89" width="5.0"/>
+    <edge id="v_e_x_s" from="east_crossing" to="se_junction" numLanes="1" speed="13.89" width="5.0"/>
+    
+    <edge id="train_track_west" from="train_start" to="west_crossing" numLanes="1" speed="30.0" 
+          allow="rail" width="4.0" spreadType="center"/>
+    <edge id="train_track_mid" from="west_crossing" to="east_crossing" numLanes="1" speed="30.0" 
+          allow="rail" width="4.0" spreadType="center"/>
+    <edge id="train_track_east" from="east_crossing" to="train_end" numLanes="1" speed="30.0" 
+          allow="rail" width="4.0" spreadType="center"/>
 </edges>"""
         
         connections = """<?xml version="1.0" encoding="UTF-8"?>
 <connections>
     <connection from="n_in_w" to="v_w_n_s" fromLane="0" toLane="0"/>
-    <connection from="n_in_w" to="n_w_e" fromLane="0" toLane="0"/>
+    <connection from="n_in_w" to="n_w_e" fromLane="1" toLane="1"/>
     <connection from="v_w_x_s" to="s_w_e" fromLane="0" toLane="0"/>
     <connection from="n_w_e" to="v_e_n_s" fromLane="0" toLane="0"/>
+    <connection from="n_w_e" to="n_out_e" fromLane="1" toLane="1"/>
     <connection from="v_e_x_s" to="s_out_e" fromLane="0" toLane="0"/>
     <connection from="s_w_e" to="s_out_e" fromLane="0" toLane="0"/>
+    <connection from="s_w_e" to="s_out_e" fromLane="1" toLane="1"/>
+    
+    <connection from="train_track_west" to="train_track_mid" fromLane="0" toLane="0"/>
+    <connection from="train_track_mid" to="train_track_east" fromLane="0" toLane="0"/>
 </connections>"""
+        
+        types = """<?xml version="1.0" encoding="UTF-8"?>
+<types>
+    <type id="road" priority="1" numLanes="2" speed="16.67" color="80,80,80"/>
+    <type id="crossing_road" priority="2" numLanes="1" speed="13.89" color="90,90,90"/>
+    <type id="railway" priority="3" numLanes="1" speed="30.0" allow="rail" color="139,90,43" width="4.0"/>
+</types>"""
         
         Path('simulation.nod.xml').write_text(nodes)
         Path('simulation.edg.xml').write_text(edges)
         Path('simulation.con.xml').write_text(connections)
+        Path('simulation.typ.xml').write_text(types)
         
         result = subprocess.run([
             'netconvert',
             '--node-files=simulation.nod.xml',
             '--edge-files=simulation.edg.xml',
             '--connection-files=simulation.con.xml',
+            '--type-files=simulation.typ.xml',
             '--output-file=simulation.net.xml',
-            '--no-turnarounds'
+            '--no-turnarounds',
+            '--junctions.corner-detail=5',
+            '--default.junctions.radius=10'
         ], capture_output=True)
         
         if result.returncode != 0:
@@ -104,28 +130,49 @@ class TrafficSimulation:
         return True
     
     def create_routes(self, phase):
-        """Create route file"""
+        """Create route file with realistic vehicle colors"""
         traffic = self.config['simulation']['traffic']
         
         if phase == 1:
             routes = f"""<?xml version="1.0" encoding="UTF-8"?>
 <routes>
     <vType id="car" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="70,130,180"/>
+    <vType id="sedan" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="200,50,50"/>
+    <vType id="suv" length="5.0" maxSpeed="18" accel="2.2" decel="4.0" sigma="0.5" color="50,50,50"/>
+    <vType id="train" length="150" maxSpeed="30" accel="0.5" decel="0.5" color="220,20,20" vClass="rail" width="4.0"/>
+    
     <route id="route_west" edges="n_in_w v_w_n_s v_w_x_s s_w_e s_out_e"/>
-    <flow id="cars" type="car" route="route_west" begin="0" end="1800" vehsPerHour="{traffic['cars_per_hour']}"/>
+    <route id="train_route" edges="train_track_west train_track_mid train_track_east"/>
+    
+    <flow id="cars" type="car" route="route_west" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.5)}" departLane="best"/>
+    <flow id="sedans" type="sedan" route="route_west" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.3)}" departLane="best"/>
+    <flow id="suvs" type="suv" route="route_west" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.2)}" departLane="best"/>
+    
+    <vehicle id="train_1" type="train" route="train_route" depart="90" color="220,20,20"/>
+    <vehicle id="train_2" type="train" route="train_route" depart="390" color="220,20,20"/>
+    <vehicle id="train_3" type="train" route="train_route" depart="690" color="220,20,20"/>
+    <vehicle id="train_4" type="train" route="train_route" depart="990" color="220,20,20"/>
+    <vehicle id="train_5" type="train" route="train_route" depart="1290" color="220,20,20"/>
+    <vehicle id="train_6" type="train" route="train_route" depart="1590" color="220,20,20"/>
 </routes>"""
         else:
             routes = f"""<?xml version="1.0" encoding="UTF-8"?>
 <routes>
     <vType id="car" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="255,140,0"/>
+    <vType id="sedan" length="4.5" maxSpeed="20" accel="2.6" decel="4.5" sigma="0.5" color="34,139,34"/>
+    <vType id="suv" length="5.0" maxSpeed="18" accel="2.2" decel="4.0" sigma="0.5" color="138,43,226"/>
+    
     <route id="route_east" edges="n_in_w n_w_e v_e_n_s v_e_x_s s_out_e"/>
-    <flow id="cars" type="car" route="route_east" begin="0" end="1800" vehsPerHour="{traffic['cars_per_hour']}"/>
+    
+    <flow id="cars" type="car" route="route_east" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.5)}" departLane="best"/>
+    <flow id="sedans" type="sedan" route="route_east" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.3)}" departLane="best"/>
+    <flow id="suvs" type="suv" route="route_east" begin="0" end="1800" vehsPerHour="{int(traffic['cars_per_hour']*0.2)}" departLane="best"/>
 </routes>"""
         
         Path('simulation.rou.xml').write_text(routes)
     
     def create_config(self):
-        """Create SUMO configuration"""
+        """Create SUMO configuration with GUI settings"""
         config = """<?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <input>
@@ -141,9 +188,22 @@ class TrafficSimulation:
         <ignore-route-errors value="true"/>
         <time-to-teleport value="-1"/>
     </processing>
+    <gui_only>
+        <gui-settings-file value="gui-settings.xml"/>
+    </gui_only>
 </configuration>"""
         
+        gui_settings = """<?xml version="1.0" encoding="UTF-8"?>
+<viewsettings>
+    <scheme name="real world"/>
+    <delay value="50"/>
+    <viewport zoom="150" x="0" y="0" angle="0"/>
+    <background backgroundColor="180,220,180" showGrid="1" gridXSize="100" gridYSize="100"/>
+    <decal filename="" screenRelative="0" centerX="0" centerY="0" width="10" height="10" rotation="0" layer="0"/>
+</viewsettings>"""
+        
         Path('simulation.sumocfg').write_text(config)
+        Path('gui-settings.xml').write_text(gui_settings)
     
     def get_crossing_position(self, crossing_name):
         """Get actual position of crossing from SUMO"""
@@ -171,13 +231,11 @@ class TrafficSimulation:
         
         distance = abs(x - crossing_x)
         
-        # If near crossing (within 50m) and stopped
         if distance < 50 and speed < 0.5:
             if vid not in waiting_dict:
-                waiting_dict[vid] = t  # Start waiting
+                waiting_dict[vid] = t
         else:
             if vid in waiting_dict:
-                # Was waiting, now moving - add wait time
                 wait_duration = t - waiting_dict[vid]
                 if vid in self.vehicles:
                     self.vehicles[vid]['wait_time'] += wait_duration
@@ -201,7 +259,6 @@ class TrafficSimulation:
         trip_times = [v['trip_time'] for v in completed]
         wait_times = [v['wait_time'] for v in completed]
         
-        # Fuel calculation
         fuel = self.config['simulation']['fuel']
         fuel_consumed = []
         co2_emitted = []
@@ -269,10 +326,8 @@ class TrafficSimulation:
                '--start', '--quit-on-end', '--delay', '0', '--no-warnings']
         traci.start(cmd)
         
-        # Get crossing position
         west_x, _ = self.get_crossing_position('west')
         
-        # Train parameters
         train_interval = self.config['simulation']['traffic']['train_interval']
         train_duration = self.config['simulation']['traffic']['train_duration']
         next_train = 90
@@ -282,7 +337,7 @@ class TrafficSimulation:
         
         try:
             step = 0
-            max_steps = 18000  # 1800 seconds / 0.1
+            max_steps = 18000
             
             while step < max_steps:
                 try:
@@ -295,7 +350,6 @@ class TrafficSimulation:
                 if traci.simulation.getMinExpectedNumber() == 0:
                     break
                 
-                # Train gate control
                 if t >= next_train and not gate_closed:
                     gate_closed = True
                     gate_close_time = t
@@ -303,7 +357,6 @@ class TrafficSimulation:
                 
                 if gate_closed:
                     if t >= gate_close_time + train_duration:
-                        # Open gate
                         gate_closed = False
                         for vid in list(stopped_vehicles):
                             try:
@@ -314,7 +367,6 @@ class TrafficSimulation:
                         next_train = t + train_interval
                         Logger.log(f"[Train] Gate opened at T={t:.0f}s")
                     else:
-                        # Stop vehicles near crossing
                         if west_x is not None:
                             for vid in traci.vehicle.getIDList():
                                 try:
@@ -325,7 +377,6 @@ class TrafficSimulation:
                                 except:
                                     continue
                 
-                # Track vehicles
                 for vid in traci.vehicle.getIDList():
                     try:
                         x, _ = traci.vehicle.getPosition(vid)
@@ -336,7 +387,6 @@ class TrafficSimulation:
                     except:
                         continue
                 
-                # Handle arrivals
                 for vid in traci.simulation.getArrivedIDList():
                     self.end_vehicle(vid, t)
                 
@@ -444,11 +494,9 @@ class TrafficSimulation:
         """Calculate optimized scenario with smart routing (poster Table 3)"""
         adoption_rate = self.config['simulation']['routing']['adoption_rate']
         
-        # Vehicles that experienced waiting
         vehicles_affected = phase1['wait_time']['vehicles_waited']
         total_vehicles = phase1['n_vehicles']
         
-        # With smart routing: 70% of affected vehicles reroute
         vehicles_rerouted = int(vehicles_affected * adoption_rate)
         vehicles_still_wait = vehicles_affected - vehicles_rerouted
         vehicles_clear = total_vehicles - vehicles_affected
@@ -460,32 +508,26 @@ class TrafficSimulation:
         Logger.log(f"  Still wait (30%): {vehicles_still_wait}")
         Logger.log(f"  Clear period: {vehicles_clear}")
         
-        # Calculate average wait for those who waited
         avg_wait_for_waiters = (phase1['wait_time']['mean'] * total_vehicles / vehicles_affected 
                                if vehicles_affected > 0 else 0)
         
-        # Reroute penalty (5 seconds detour to east crossing)
         reroute_penalty = 5.0
         
-        # Weighted average trip time
         opt_trip_time = (
             vehicles_rerouted * (phase2['trip_time']['mean'] + reroute_penalty) +
             vehicles_still_wait * (phase1['trip_time']['mean']) +
             vehicles_clear * phase1['trip_time']['mean']
         ) / total_vehicles
         
-        # Weighted average wait time
         opt_wait_time = (
             vehicles_rerouted * reroute_penalty +
             vehicles_still_wait * avg_wait_for_waiters +
             vehicles_clear * 0
         ) / total_vehicles
         
-        # Fuel calculation (rerouting uses more fuel, but saves idling)
         fuel_driving = self.config['simulation']['fuel']['driving']
         fuel_idling = self.config['simulation']['fuel']['idling']
         
-        # Fuel for rerouted: base + extra driving - saved idling
         reroute_fuel_extra = reroute_penalty * fuel_driving
         idling_fuel_saved = avg_wait_for_waiters * fuel_idling
         
@@ -502,11 +544,11 @@ class TrafficSimulation:
             'n_vehicles': total_vehicles,
             'trip_time': {
                 'mean': float(opt_trip_time),
-                'std': phase1['trip_time']['std'] * 0.8  # Reduced variation
+                'std': phase1['trip_time']['std'] * 0.8
             },
             'wait_time': {
                 'mean': float(opt_wait_time),
-                'std': phase1['wait_time']['std'] * 0.5,  # Reduced variation
+                'std': phase1['wait_time']['std'] * 0.5,
                 'vehicles_waited': vehicles_still_wait
             },
             'fuel': {
@@ -532,10 +574,8 @@ class TrafficSimulation:
             Logger.log("Missing phase metrics")
             return
         
-        # Calculate optimized scenario
         optimized = self.calculate_optimized(phase1, phase2)
         
-        # Calculate improvements: Baseline vs Optimized
         trip_reduction = ((phase1['trip_time']['mean'] - optimized['trip_time']['mean']) / 
                          phase1['trip_time']['mean'] * 100)
         wait_reduction = ((phase1['wait_time']['mean'] - optimized['wait_time']['mean']) / 
@@ -545,7 +585,6 @@ class TrafficSimulation:
         co2_reduction = ((phase1['co2']['mean'] - optimized['co2']['mean']) / 
                         phase1['co2']['mean'] * 100)
         
-        # Queue reduction (affected vehicles)
         queue_reduction = ((phase1['wait_time']['vehicles_waited'] - optimized['wait_time']['vehicles_waited']) /
                           phase1['wait_time']['vehicles_waited'] * 100) if phase1['wait_time']['vehicles_waited'] > 0 else 0
         
@@ -565,9 +604,7 @@ class TrafficSimulation:
         with open(self.output_dir / 'comparison.json', 'w') as f:
             json.dump(comparison, f, indent=2)
         
-        Logger.log("\n" + "="*60)
-        Logger.log("COMPARISON: Baseline vs Optimized Smart Routing (Table 3)")
-        Logger.log("="*60)
+        Logger.log("\nCOMPARISON: Baseline vs Optimized Smart Routing (Table 3)")
         Logger.log(f"\nBaseline (Phase 1):")
         Logger.log(f"  Trip time: {phase1['trip_time']['mean']:.1f}s")
         Logger.log(f"  Wait time: {phase1['wait_time']['mean']:.1f}s")
@@ -586,7 +623,6 @@ class TrafficSimulation:
         Logger.log(f"  Fuel reduction: {fuel_reduction:.1f}%")
         Logger.log(f"  CO2 reduction: {co2_reduction:.1f}%")
         Logger.log(f"  Queue reduction: {queue_reduction:.1f}%")
-        Logger.log("\n" + "="*60)
     
     def run_full_simulation(self, gui=False):
         """Run complete two-phase simulation"""
