@@ -39,8 +39,9 @@ inline float getDefaultTrainLength() {
     return 0.15f;
 }
 
-#define GATE_OPEN_ANGLE 90
-#define GATE_CLOSED_ANGLE 0
+// REVERSED: Servo moves up to close gate
+#define GATE_OPEN_ANGLE 0
+#define GATE_CLOSED_ANGLE 90
 #define DISPLAY_BRIGHTNESS 0x0f
 
 #endif

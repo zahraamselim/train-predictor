@@ -174,6 +174,7 @@ float estimateETD(float eta, float last_speed) {
         """Export configuration helpers"""
         Logger.section("Exporting configuration")
         
+        # REVERSED: Open=0, Closed=90 (servo moves up to close)
         header = """#ifndef CONFIG_H
 #define CONFIG_H
 
@@ -215,8 +216,9 @@ inline float getDefaultTrainLength() {
     return 0.15f;
 }
 
-#define GATE_OPEN_ANGLE 90
-#define GATE_CLOSED_ANGLE 0
+// REVERSED: Servo moves up to close gate
+#define GATE_OPEN_ANGLE 0
+#define GATE_CLOSED_ANGLE 90
 #define DISPLAY_BRIGHTNESS 0x0f
 
 #endif
@@ -226,6 +228,7 @@ inline float getDefaultTrainLength() {
         output_path.write_text(header)
         
         Logger.log(f"Saved: {output_path}")
+        Logger.log("  Servo: REVERSED (open=0°, closed=90°)")
     
     def export_all(self):
         """Export everything to Arduino"""
